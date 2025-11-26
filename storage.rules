@@ -1,0 +1,75 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserRole() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+    
+    function isValidImageFile() {
+      return request.resource.contentType.matches('image/.*') 
+        && request.resource.size < 5 * 1024 * 1024; // 5MB limit
+    }
+    
+    // Player photos
+    match /players/{playerId}.jpg {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidImageFile();
+      allow delete: if isAdmin();
+    }
+    
+    match /players/{playerId}.png {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidImageFile();
+      allow delete: if isAdmin();
+    }
+    
+    // Team logos
+    match /teams/{teamId}.jpg {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidImageFile();
+      allow delete: if isAdmin();
+    }
+    
+    match /teams/{teamId}.png {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidImageFile();
+      allow delete: if isAdmin();
+    }
+    
+    // Tournament banners
+    match /tournaments/{tournamentId}/banner.jpg {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidImageFile();
+      allow delete: if isAdmin();
+    }
+    
+    match /tournaments/{tournamentId}/banner.png {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidImageFile();
+      allow delete: if isAdmin();
+    }
+    
+    // User profile photos
+    match /users/{userId}.jpg {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId && isValidImageFile();
+      allow delete: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    match /users/{userId}.png {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && request.auth.uid == userId && isValidImageFile();
+      allow delete: if isAuthenticated() && request.auth.uid == userId;
+    }
+  }
+}

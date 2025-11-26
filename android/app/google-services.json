@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "842029024914",
+    "project_id": "cric-scoring",
+    "storage_bucket": "cric-scoring.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:842029024914:android:ff198642a13b144c59084b",
+        "android_client_info": {
+          "package_name": "com.burhanuddin.cric_scoring"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyARPwzbDxyKN2fqSivwzWGD_X390KNqgQ0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

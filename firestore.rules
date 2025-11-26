@@ -1,0 +1,100 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && request.auth.uid == userId;
+      allow delete: if isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Players collection
+    match /players/{playerId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated();
+    }
+    
+    // Teams collection
+    match /teams/{teamId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated();
+      
+      // Teams players subcollection
+      match /players/{playerId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+    }
+    
+    // Tournaments collection
+    match /tournaments/{tournamentId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated();
+      
+      // Tournament teams subcollection
+      match /teams/{teamId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+      
+      // Tournament matches subcollection
+      match /matches/{matchId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+    }
+    
+    // Matches collection
+    match /matches/{matchId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated();
+      
+      // Innings subcollection
+      match /innings/{inningsNumber} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+      
+      // Batting subcollection
+      match /batting/{playerId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+      
+      // Bowling subcollection
+      match /bowling/{playerId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+      
+      // Fall of wickets subcollection
+      match /fallOfWickets/{wicketNumber} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+      
+      // Squads subcollection
+      match /squads/{team} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+      
+      // Balls subcollection
+      match /balls/{ballId} {
+        allow read: if isAuthenticated();
+        allow write: if isAuthenticated();
+      }
+    }
+  }
+}
