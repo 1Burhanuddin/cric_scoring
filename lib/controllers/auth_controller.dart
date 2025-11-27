@@ -74,7 +74,11 @@ class AuthController {
       'uid': uid,
       'email': email,
       'name': name,
-      'role': 'viewer', // Default role
+      'jerseyNumber': 0, // Default jersey number
+      'playerRole': 'batsman', // Default role
+      'battingStyle': 'right-hand', // Default batting style
+      'bowlingStyle': null, // No bowling style by default
+      'photoUrl': null,
       'createdAt': FieldValue.serverTimestamp(),
       'updatedAt': FieldValue.serverTimestamp(),
     });

@@ -98,5 +98,5 @@ class TeamSquad {
   List<SquadPlayer> get playingXI => players.where((p) => p.isPlaying).toList();
   int get playingXICount => playingXI.length;
   bool get hasWicketKeeper => playingXI.any((p) => p.isWicketKeeper);
-  bool get isValidXI => playingXICount == 11 && hasWicketKeeper;
+  bool get isValidXI => playingXICount >= 2; // Minimum 2 players required
 }

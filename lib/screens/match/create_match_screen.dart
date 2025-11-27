@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:cric_scoring/providers/team_provider.dart';
-import 'package:cric_scoring/providers/match_provider.dart';
+import 'package:cric_scoring/providers/match_creation_provider.dart';
 import 'package:cric_scoring/models/team_model.dart';
+import 'package:cric_scoring/screens/match/playing_xi_screen.dart';
 
 class CreateMatchScreen extends ConsumerStatefulWidget {
   const CreateMatchScreen({super.key});
@@ -15,17 +16,21 @@ class CreateMatchScreen extends ConsumerStatefulWidget {
 class _CreateMatchScreenState extends ConsumerState<CreateMatchScreen> {
   final _formKey = GlobalKey<FormState>();
   final _groundController = TextEditingController();
+  final _oversController = TextEditingController(text: '20');
 
   Team? _teamA;
   Team? _teamB;
   int _overs = 20;
   String _ballType = 'tennis';
   DateTime _matchDate = DateTime.now();
-  bool _isLoading = false;
+  int _bowlersPerOver = 1; // New field
+  bool _hasPowerplay = false; // New field
+  int _powerplayOvers = 6; // New field
 
   @override
   void dispose() {
     _groundController.dispose();
+    _oversController.dispose();
     super.dispose();
   }
 
@@ -57,7 +62,7 @@ class _CreateMatchScreenState extends ConsumerState<CreateMatchScreen> {
     }
   }
 
-  Future<void> _createMatch() async {
+  void _proceedToSquadSelection() {
     if (!_formKey.currentState!.validate()) return;
     if (_teamA == null || _teamB == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -66,41 +71,22 @@ class _CreateMatchScreenState extends ConsumerState<CreateMatchScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
+    // Save match details to match creation provider
+    final notifier = ref.read(matchCreationProvider.notifier);
+    notifier.setTeamA(_teamA!);
+    notifier.setTeamB(_teamB!);
+    notifier.setOvers(_overs);
+    notifier.setGround(_groundController.text.trim());
+    notifier.setMatchDate(_matchDate);
+    notifier.setBallType(_ballType);
 
-    try {
-      await ref.read(matchProviderNotifier.notifier).createMatch(
-            teamA: _teamA!,
-            teamB: _teamB!,
-            overs: _overs,
-            ground: _groundController.text.trim(),
-            date: _matchDate,
-            ballType: _ballType,
-          );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Match created successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        context.pop();
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-    }
+    // Navigate to playing XI selection
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const PlayingXIScreen(),
+      ),
+    );
   }
 
   @override
@@ -284,30 +270,97 @@ class _CreateMatchScreenState extends ConsumerState<CreateMatchScreen> {
           // Ball Type
           _buildBallTypeSelector(theme),
 
+          const SizedBox(height: 16),
+
+          // Bowlers Per Over
+          TextFormField(
+            initialValue: _bowlersPerOver.toString(),
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: 'Bowlers Per Over',
+              hintText: 'e.g., 1 or 2',
+              prefixIcon: const Icon(Icons.sports_baseball),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onChanged: (value) {
+              final bowlers = int.tryParse(value);
+              if (bowlers != null && bowlers >= 1 && bowlers <= 3) {
+                setState(() => _bowlersPerOver = bowlers);
+              }
+            },
+            validator: (value) {
+              final bowlers = int.tryParse(value ?? '');
+              if (bowlers == null || bowlers < 1 || bowlers > 3) {
+                return 'Enter 1-3 bowlers';
+              }
+              return null;
+            },
+          ),
+
+          const SizedBox(height: 16),
+
+          // Powerplay Option
+          Card(
+            child: SwitchListTile(
+              title: const Text('Enable Powerplay'),
+              subtitle: Text(_hasPowerplay
+                  ? 'First $_powerplayOvers overs'
+                  : 'No powerplay restrictions'),
+              value: _hasPowerplay,
+              onChanged: (value) {
+                setState(() => _hasPowerplay = value);
+              },
+            ),
+          ),
+
+          if (_hasPowerplay) ...[
+            const SizedBox(height: 16),
+            TextFormField(
+              initialValue: _powerplayOvers.toString(),
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Powerplay Overs',
+                hintText: 'e.g., 6',
+                prefixIcon: const Icon(Icons.flash_on),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onChanged: (value) {
+                final overs = int.tryParse(value);
+                if (overs != null && overs >= 1 && overs <= _overs) {
+                  setState(() => _powerplayOvers = overs);
+                }
+              },
+              validator: (value) {
+                final overs = int.tryParse(value ?? '');
+                if (overs == null || overs < 1 || overs > _overs) {
+                  return 'Enter 1-$_overs overs';
+                }
+                return null;
+              },
+            ),
+          ],
+
           const SizedBox(height: 32),
 
           // Create Button
           FilledButton(
-            onPressed: _isLoading ? null : _createMatch,
+            onPressed: _proceedToSquadSelection,
             style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
               minimumSize: const Size(double.infinity, 56),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
               ),
             ),
-            child: _isLoading
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                : const Text(
-                    'Create Match',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
+            child: const Text(
+              'Next: Select Playing XI',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -461,34 +514,30 @@ class _CreateMatchScreenState extends ConsumerState<CreateMatchScreen> {
   }
 
   Widget _buildOversSelector(ThemeData theme) {
-    final oversOptions = [10, 15, 20, 30, 40, 50];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Overs',
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: Colors.grey.shade700,
-          ),
+    return TextFormField(
+      controller: _oversController,
+      keyboardType: TextInputType.number,
+      decoration: InputDecoration(
+        labelText: 'Overs per Innings',
+        hintText: 'e.g., 20',
+        prefixIcon: const Icon(Icons.sports_cricket),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          children: oversOptions.map((overs) {
-            final isSelected = _overs == overs;
-            return ChoiceChip(
-              label: Text('$overs'),
-              selected: isSelected,
-              onSelected: (selected) {
-                if (selected) {
-                  setState(() => _overs = overs);
-                }
-              },
-            );
-          }).toList(),
-        ),
-      ],
+      ),
+      onChanged: (value) {
+        final overs = int.tryParse(value);
+        if (overs != null && overs >= 1 && overs <= 50) {
+          setState(() => _overs = overs);
+        }
+      },
+      validator: (value) {
+        final overs = int.tryParse(value ?? '');
+        if (overs == null || overs < 1 || overs > 50) {
+          return 'Enter overs between 1-50';
+        }
+        return null;
+      },
     );
   }
 
@@ -519,11 +568,11 @@ class _CreateMatchScreenState extends ConsumerState<CreateMatchScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: ChoiceChip(
-                label: const Text('Hard Ball'),
-                selected: _ballType == 'hard',
+                label: const Text('Leather Ball'),
+                selected: _ballType == 'leather',
                 onSelected: (selected) {
                   if (selected) {
-                    setState(() => _ballType = 'hard');
+                    setState(() => _ballType = 'leather');
                   }
                 },
               ),

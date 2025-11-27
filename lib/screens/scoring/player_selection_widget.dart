@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cric_scoring/models/player_model.dart';
 import 'package:cric_scoring/providers/player_provider.dart';
+import 'package:cric_scoring/providers/firebase_providers.dart';
 
 class PlayerSelectionWidget extends ConsumerWidget {
   final String teamId;
   final String? selectedPlayerId;
   final String label;
+  final String? matchId;
+  final int? inningsNumber;
   final Function(TeamPlayer) onPlayerSelected;
 
   const PlayerSelectionWidget({
@@ -14,6 +17,8 @@ class PlayerSelectionWidget extends ConsumerWidget {
     required this.teamId,
     this.selectedPlayerId,
     required this.label,
+    this.matchId,
+    this.inningsNumber,
     required this.onPlayerSelected,
   });
 
@@ -27,7 +32,7 @@ class PlayerSelectionWidget extends ConsumerWidget {
             players.where((p) => p.playerId == selectedPlayerId).firstOrNull;
 
         return InkWell(
-          onTap: () => _showPlayerSelection(context, players),
+          onTap: () => _showPlayerSelection(context, ref, players),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
@@ -72,7 +77,33 @@ class PlayerSelectionWidget extends ConsumerWidget {
     );
   }
 
-  void _showPlayerSelection(BuildContext context, List<TeamPlayer> players) {
+  Future<void> _showPlayerSelection(
+      BuildContext context, WidgetRef ref, List<TeamPlayer> players) async {
+    // Filter out batsmen who are already out (only for batsmen selection)
+    List<TeamPlayer> availablePlayers = players;
+
+    if (matchId != null &&
+        inningsNumber != null &&
+        (label.toLowerCase().contains('striker') ||
+            label.toLowerCase().contains('batsman'))) {
+      final firestore = ref.read(firestoreProvider);
+      final battingSnapshot = await firestore
+          .collection('matches')
+          .doc(matchId)
+          .collection('batting')
+          .where('inningsNumber', isEqualTo: inningsNumber)
+          .where('isOut', isEqualTo: true)
+          .get();
+
+      final outPlayerIds =
+          battingSnapshot.docs.map((doc) => doc.data()['playerId']).toSet();
+
+      availablePlayers =
+          players.where((p) => !outPlayerIds.contains(p.playerId)).toList();
+    }
+
+    if (!context.mounted) return;
+
     showModalBottomSheet(
       context: context,
       builder: (context) => Container(
@@ -86,37 +117,46 @@ class PlayerSelectionWidget extends ConsumerWidget {
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            ...players.map((player) => ListTile(
-                  leading: CircleAvatar(
-                    child: Text(player.jerseyNumber.toString()),
-                  ),
-                  title: Row(
-                    children: [
-                      Text(player.name),
-                      if (player.isCaptain) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 4, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: Colors.amber,
-                            borderRadius: BorderRadius.circular(4),
+            if (availablePlayers.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text(
+                  'No available players',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              )
+            else
+              ...availablePlayers.map((player) => ListTile(
+                    leading: CircleAvatar(
+                      child: Text(player.jerseyNumber.toString()),
+                    ),
+                    title: Row(
+                      children: [
+                        Text(player.name),
+                        if (player.isCaptain) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 4, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.amber,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: const Text(
+                              'C',
+                              style: TextStyle(
+                                  fontSize: 10, fontWeight: FontWeight.bold),
+                            ),
                           ),
-                          child: const Text(
-                            'C',
-                            style: TextStyle(
-                                fontSize: 10, fontWeight: FontWeight.bold),
-                          ),
-                        ),
+                        ],
                       ],
-                    ],
-                  ),
-                  subtitle: Text(player.role.toUpperCase()),
-                  onTap: () {
-                    Navigator.pop(context);
-                    onPlayerSelected(player);
-                  },
-                )),
+                    ),
+                    subtitle: Text(player.role.toUpperCase()),
+                    onTap: () {
+                      Navigator.pop(context);
+                      onPlayerSelected(player);
+                    },
+                  )),
           ],
         ),
       ),

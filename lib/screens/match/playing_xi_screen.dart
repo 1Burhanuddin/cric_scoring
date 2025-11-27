@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cric_scoring/models/player_model.dart';
 import 'package:cric_scoring/providers/match_creation_provider.dart';
-import 'package:cric_scoring/screens/match/toss_screen.dart';
+import 'package:cric_scoring/providers/firebase_providers.dart';
+import 'package:cric_scoring/screens/match/toss_selection_screen.dart';
 
 class PlayingXIScreen extends ConsumerStatefulWidget {
   const PlayingXIScreen({super.key});
@@ -13,11 +16,14 @@ class PlayingXIScreen extends ConsumerStatefulWidget {
 class _PlayingXIScreenState extends ConsumerState<PlayingXIScreen> {
   final Set<String> _teamASelected = {};
   final Set<String> _teamBSelected = {};
+  List<TeamPlayer> _teamAPlayers = [];
+  List<TeamPlayer> _teamBPlayers = [];
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(matchCreationProvider);
     final notifier = ref.read(matchCreationProvider.notifier);
+    final firestore = ref.watch(firestoreProvider);
 
     if (state.teamA == null || state.teamB == null) {
       return Scaffold(
@@ -25,11 +31,6 @@ class _PlayingXIScreenState extends ConsumerState<PlayingXIScreen> {
         body: const Center(child: Text('Teams not selected')),
       );
     }
-
-    final teamAPlayersAsync =
-        ref.watch(teamPlayersProvider(state.teamA!.teamId));
-    final teamBPlayersAsync =
-        ref.watch(teamPlayersProvider(state.teamB!.teamId));
 
     return Scaffold(
       appBar: AppBar(
@@ -45,16 +46,58 @@ class _PlayingXIScreenState extends ConsumerState<PlayingXIScreen> {
                 // Team A Section
                 _buildTeamHeader(state.teamA!.name, _teamASelected.length),
                 const SizedBox(height: 8),
-                teamAPlayersAsync.when(
-                  data: (players) {
-                    if (players.isEmpty) {
-                      return const Card(
+                StreamBuilder<QuerySnapshot>(
+                  stream: firestore
+                      .collection('teams')
+                      .doc(state.teamA!.teamId)
+                      .collection('players')
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return Card(
                         child: Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Text('No players in this team'),
+                          padding: const EdgeInsets.all(16),
+                          child: Text('Error: ${snapshot.error}'),
                         ),
                       );
                     }
+                    if (!snapshot.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    final players = snapshot.data!.docs.map((doc) {
+                      return TeamPlayer.fromMap(
+                          doc.data() as Map<String, dynamic>);
+                    }).toList();
+
+                    players.sort(
+                        (a, b) => a.jerseyNumber.compareTo(b.jerseyNumber));
+
+                    // Store Team A players
+                    _teamAPlayers = players;
+
+                    if (players.isEmpty) {
+                      return Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              const Icon(Icons.person_off,
+                                  size: 48, color: Colors.grey),
+                              const SizedBox(height: 8),
+                              Text('No players in ${state.teamA!.name}'),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'Add players to this team first',
+                                style:
+                                    TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
                     return Column(
                       children: players.map((player) {
                         final isSelected =
@@ -64,14 +107,19 @@ class _PlayingXIScreenState extends ConsumerState<PlayingXIScreen> {
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 0),
                           title: Text(player.name),
-                          subtitle: Text(player.role),
+                          subtitle: Text(player.role.toUpperCase()),
+                          secondary: CircleAvatar(
+                            radius: 16,
+                            child: Text(
+                              player.jerseyNumber.toString(),
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
                           value: isSelected,
                           onChanged: (value) {
                             setState(() {
                               if (value == true) {
-                                if (_teamASelected.length < 11) {
-                                  _teamASelected.add(player.playerId);
-                                }
+                                _teamASelected.add(player.playerId);
                               } else {
                                 _teamASelected.remove(player.playerId);
                               }
@@ -81,9 +129,6 @@ class _PlayingXIScreenState extends ConsumerState<PlayingXIScreen> {
                       }).toList(),
                     );
                   },
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (_, __) => const Text('Error loading players'),
                 ),
 
                 const SizedBox(height: 24),
@@ -91,16 +136,58 @@ class _PlayingXIScreenState extends ConsumerState<PlayingXIScreen> {
                 // Team B Section
                 _buildTeamHeader(state.teamB!.name, _teamBSelected.length),
                 const SizedBox(height: 8),
-                teamBPlayersAsync.when(
-                  data: (players) {
-                    if (players.isEmpty) {
-                      return const Card(
+                StreamBuilder<QuerySnapshot>(
+                  stream: firestore
+                      .collection('teams')
+                      .doc(state.teamB!.teamId)
+                      .collection('players')
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return Card(
                         child: Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Text('No players in this team'),
+                          padding: const EdgeInsets.all(16),
+                          child: Text('Error: ${snapshot.error}'),
                         ),
                       );
                     }
+                    if (!snapshot.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    final players = snapshot.data!.docs.map((doc) {
+                      return TeamPlayer.fromMap(
+                          doc.data() as Map<String, dynamic>);
+                    }).toList();
+
+                    players.sort(
+                        (a, b) => a.jerseyNumber.compareTo(b.jerseyNumber));
+
+                    // Store Team B players
+                    _teamBPlayers = players;
+
+                    if (players.isEmpty) {
+                      return Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            children: [
+                              const Icon(Icons.person_off,
+                                  size: 48, color: Colors.grey),
+                              const SizedBox(height: 8),
+                              Text('No players in ${state.teamB!.name}'),
+                              const SizedBox(height: 4),
+                              const Text(
+                                'Add players to this team first',
+                                style:
+                                    TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+
                     return Column(
                       children: players.map((player) {
                         final isSelected =
@@ -110,14 +197,19 @@ class _PlayingXIScreenState extends ConsumerState<PlayingXIScreen> {
                           contentPadding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 0),
                           title: Text(player.name),
-                          subtitle: Text(player.role),
+                          subtitle: Text(player.role.toUpperCase()),
+                          secondary: CircleAvatar(
+                            radius: 16,
+                            child: Text(
+                              player.jerseyNumber.toString(),
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ),
                           value: isSelected,
                           onChanged: (value) {
                             setState(() {
                               if (value == true) {
-                                if (_teamBSelected.length < 11) {
-                                  _teamBSelected.add(player.playerId);
-                                }
+                                _teamBSelected.add(player.playerId);
                               } else {
                                 _teamBSelected.remove(player.playerId);
                               }
@@ -127,9 +219,6 @@ class _PlayingXIScreenState extends ConsumerState<PlayingXIScreen> {
                       }).toList(),
                     );
                   },
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (_, __) => const Text('Error loading players'),
                 ),
               ],
             ),
@@ -151,41 +240,73 @@ class _PlayingXIScreenState extends ConsumerState<PlayingXIScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
+                const Text(
+                  'Select at least 2 players per team',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 8),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildValidationChip(
-                      '${state.teamA!.name}: ${_teamASelected.length}/11',
-                      _teamASelected.length == 11,
+                    Expanded(
+                      child: _buildValidationChip(
+                        '${state.teamA!.name}: ${_teamASelected.length}',
+                        _teamASelected.length >= 2,
+                      ),
                     ),
-                    _buildValidationChip(
-                      '${state.teamB!.name}: ${_teamBSelected.length}/11',
-                      _teamBSelected.length == 11,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildValidationChip(
+                        '${state.teamB!.name}: ${_teamBSelected.length}',
+                        _teamBSelected.length >= 2,
+                      ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 12),
                 ElevatedButton(
-                  onPressed: _canProceed(teamAPlayersAsync, teamBPlayersAsync)
+                  onPressed: _canProceed()
                       ? () {
+                          // Convert TeamPlayer to Player
+                          final teamAPlayers = _teamAPlayers
+                              .map((tp) => Player(
+                                    playerId: tp.playerId,
+                                    name: tp.name,
+                                    role: tp.role,
+                                    battingStyle: 'right-hand',
+                                    jerseyNumber: tp.jerseyNumber,
+                                    createdAt: DateTime.now(),
+                                  ))
+                              .toList();
+
+                          final teamBPlayers = _teamBPlayers
+                              .map((tp) => Player(
+                                    playerId: tp.playerId,
+                                    name: tp.name,
+                                    role: tp.role,
+                                    battingStyle: 'right-hand',
+                                    jerseyNumber: tp.jerseyNumber,
+                                    createdAt: DateTime.now(),
+                                  ))
+                              .toList();
+
                           // Save squads
-                          teamAPlayersAsync.whenData((players) {
-                            notifier.setTeamASquad(
-                                players, _teamASelected.toList());
-                          });
-                          teamBPlayersAsync.whenData((players) {
-                            notifier.setTeamBSquad(
-                                players, _teamBSelected.toList());
-                          });
+                          notifier.setTeamASquad(
+                              teamAPlayers, _teamASelected.toList());
+                          notifier.setTeamBSquad(
+                              teamBPlayers, _teamBSelected.toList());
 
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                                builder: (_) => const TossScreen()),
+                                builder: (_) => const TossSelectionScreen()),
                           );
                         }
                       : null,
                   style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
                     minimumSize: const Size(double.infinity, 44),
                   ),
                   child: const Text('Next: Toss'),
@@ -210,9 +331,9 @@ class _PlayingXIScreenState extends ConsumerState<PlayingXIScreen> {
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             Text(
-              '$selectedCount/11 selected',
+              '$selectedCount selected (min 2)',
               style: TextStyle(
-                color: selectedCount == 11 ? Colors.green : Colors.orange,
+                color: selectedCount >= 2 ? Colors.green : Colors.orange,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -224,7 +345,7 @@ class _PlayingXIScreenState extends ConsumerState<PlayingXIScreen> {
 
   Widget _buildValidationChip(String label, bool isValid) {
     return Chip(
-      label: Text(label),
+      label: Text(label, style: const TextStyle(fontSize: 12)),
       backgroundColor: isValid ? Colors.green.shade100 : Colors.orange.shade100,
       avatar: Icon(
         isValid ? Icons.check_circle : Icons.warning,
@@ -234,27 +355,7 @@ class _PlayingXIScreenState extends ConsumerState<PlayingXIScreen> {
     );
   }
 
-  bool _canProceed(teamAAsync, teamBAsync) {
-    if (_teamASelected.length != 11 || _teamBSelected.length != 11) {
-      return false;
-    }
-
-    // Check for wicket-keeper in both teams
-    bool teamAHasWK = false;
-    bool teamBHasWK = false;
-
-    teamAAsync.whenData((players) {
-      teamAHasWK = players
-          .where((p) => _teamASelected.contains(p.playerId))
-          .any((p) => p.role.toLowerCase().contains('keeper'));
-    });
-
-    teamBAsync.whenData((players) {
-      teamBHasWK = players
-          .where((p) => _teamBSelected.contains(p.playerId))
-          .any((p) => p.role.toLowerCase().contains('keeper'));
-    });
-
-    return teamAHasWK && teamBHasWK;
+  bool _canProceed() {
+    return _teamASelected.length >= 2 && _teamBSelected.length >= 2;
   }
 }

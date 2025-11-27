@@ -55,42 +55,52 @@ service cloud.firestore {
       }
     }
     
+    // Player Stats collection
+    match /playerStats/{playerId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+    
     // Matches collection
     match /matches/{matchId} {
       allow read: if isAuthenticated();
-      allow create, update, delete: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && 
+        (request.auth.uid == resource.data.createdBy || 
+         request.auth.uid in resource.data.scorers);
+      allow delete: if isAuthenticated() && request.auth.uid == resource.data.createdBy;
       
-      // Innings subcollection
+      // Innings subcollection - allow authenticated users to write
       match /innings/{inningsNumber} {
         allow read: if isAuthenticated();
         allow write: if isAuthenticated();
       }
       
-      // Batting subcollection
+      // Batting subcollection - allow authenticated users to write
       match /batting/{playerId} {
         allow read: if isAuthenticated();
         allow write: if isAuthenticated();
       }
       
-      // Bowling subcollection
+      // Bowling subcollection - allow authenticated users to write
       match /bowling/{playerId} {
         allow read: if isAuthenticated();
         allow write: if isAuthenticated();
       }
       
-      // Fall of wickets subcollection
+      // Fall of wickets subcollection - allow authenticated users to write
       match /fallOfWickets/{wicketNumber} {
         allow read: if isAuthenticated();
         allow write: if isAuthenticated();
       }
       
-      // Squads subcollection
+      // Squads subcollection - allow authenticated users to write
       match /squads/{team} {
         allow read: if isAuthenticated();
         allow write: if isAuthenticated();
       }
       
-      // Balls subcollection
+      // Balls subcollection - allow authenticated users to write
       match /balls/{ballId} {
         allow read: if isAuthenticated();
         allow write: if isAuthenticated();

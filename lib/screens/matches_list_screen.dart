@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
-import 'match_details_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cric_scoring/providers/match_provider.dart';
+import 'package:cric_scoring/screens/match/create_match_screen.dart';
+import 'match_scorecard_screen.dart';
 
-class MatchesListScreen extends StatelessWidget {
+class MatchesListScreen extends ConsumerWidget {
   const MatchesListScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final matchesAsync = ref.watch(matchesListProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Matches'),
@@ -13,146 +18,116 @@ class MatchesListScreen extends StatelessWidget {
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
       ),
-      body: _buildMatchesList(context),
+      body: matchesAsync.when(
+        data: (matches) {
+          if (matches.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.sports_cricket,
+                    size: 64,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No matches yet',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          color: Colors.grey.shade600,
+                        ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Create your first match to get started',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Colors.grey.shade500,
+                        ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          final liveMatches = matches.where((m) => m.status == 'live').toList();
+          final upcomingMatches =
+              matches.where((m) => m.status == 'upcoming').toList();
+          final completedMatches =
+              matches.where((m) => m.status == 'completed').toList();
+
+          return ListView(
+            padding: const EdgeInsets.all(12),
+            children: [
+              if (liveMatches.isNotEmpty) ...[
+                Text(
+                  'Live Matches',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                const SizedBox(height: 10),
+                ...liveMatches.map((match) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _buildMatchCard(context, match),
+                    )),
+                const SizedBox(height: 16),
+              ],
+              if (upcomingMatches.isNotEmpty) ...[
+                Text(
+                  'Upcoming Matches',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                const SizedBox(height: 10),
+                ...upcomingMatches.map((match) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _buildMatchCard(context, match),
+                    )),
+                const SizedBox(height: 16),
+              ],
+              if (completedMatches.isNotEmpty) ...[
+                Text(
+                  'Completed Matches',
+                  style: Theme.of(context).textTheme.headlineMedium,
+                ),
+                const SizedBox(height: 10),
+                ...completedMatches.map((match) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: _buildMatchCard(context, match),
+                    )),
+              ],
+            ],
+          );
+        },
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => Center(
+          child: Text('Error loading matches: $error'),
+        ),
+      ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        child: const Icon(Icons.add),
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CreateMatchScreen()),
+          );
+        },
         backgroundColor: Theme.of(context).colorScheme.secondary,
+        child: const Icon(Icons.add),
       ),
     );
   }
 
-  Widget _buildMatchesList(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(12),
-      children: [
-        Text(
-          'Live Matches',
-          style: Theme.of(context).textTheme.headlineMedium,
-        ),
-        const SizedBox(height: 10),
-        _buildMatchCard(
-          context,
-          teamA: 'Mumbai Indians',
-          teamALogo: 'MI',
-          teamAColor: const Color(0xFF004BA0),
-          teamB: 'Chennai Super Kings',
-          teamBLogo: 'CSK',
-          teamBColor: const Color(0xFFFDB913),
-          date: 'Today',
-          time: '7:30 PM',
-          ground: 'Wankhede Stadium, Mumbai',
-          status: 'LIVE',
-          statusColor: Colors.red,
-          score: 'MI 145/3 (16.4)',
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Upcoming Matches',
-          style: Theme.of(context).textTheme.headlineMedium,
-        ),
-        const SizedBox(height: 10),
-        _buildMatchCard(
-          context,
-          teamA: 'Royal Challengers',
-          teamALogo: 'RCB',
-          teamAColor: const Color(0xFFEC1C24),
-          teamB: 'Kolkata Knight Riders',
-          teamBLogo: 'KKR',
-          teamBColor: const Color(0xFF3A225D),
-          date: 'Tomorrow',
-          time: '3:30 PM',
-          ground: 'M. Chinnaswamy Stadium',
-          status: 'UPCOMING',
-          statusColor: Colors.blue,
-        ),
-        const SizedBox(height: 8),
-        _buildMatchCard(
-          context,
-          teamA: 'Delhi Capitals',
-          teamALogo: 'DC',
-          teamAColor: const Color(0xFF282968),
-          teamB: 'Punjab Kings',
-          teamBLogo: 'PBKS',
-          teamBColor: const Color(0xFFED1B24),
-          date: 'Dec 28',
-          time: '7:30 PM',
-          ground: 'Arun Jaitley Stadium',
-          status: 'UPCOMING',
-          statusColor: Colors.blue,
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Completed Matches',
-          style: Theme.of(context).textTheme.headlineMedium,
-        ),
-        const SizedBox(height: 10),
-        _buildMatchCard(
-          context,
-          teamA: 'Mumbai Indians',
-          teamALogo: 'MI',
-          teamAColor: const Color(0xFF004BA0),
-          teamB: 'Royal Challengers',
-          teamBLogo: 'RCB',
-          teamBColor: const Color(0xFFEC1C24),
-          date: 'Dec 20',
-          time: 'Completed',
-          ground: 'Wankhede Stadium',
-          status: 'COMPLETED',
-          statusColor: Colors.grey,
-          result: 'MI won by 7 runs',
-        ),
-        const SizedBox(height: 8),
-        _buildMatchCard(
-          context,
-          teamA: 'Chennai Super Kings',
-          teamALogo: 'CSK',
-          teamAColor: const Color(0xFFFDB913),
-          teamB: 'Kolkata Knight Riders',
-          teamBLogo: 'KKR',
-          teamBColor: const Color(0xFF3A225D),
-          date: 'Dec 18',
-          time: 'Completed',
-          ground: 'M.A. Chidambaram Stadium',
-          status: 'COMPLETED',
-          statusColor: Colors.grey,
-          result: 'KKR won by 6 wickets',
-        ),
-      ],
-    );
-  }
+  Widget _buildMatchCard(BuildContext context, match) {
+    final statusColor = match.isLive
+        ? Colors.red
+        : match.isCompleted
+            ? Colors.grey
+            : Colors.blue;
 
-  Widget _buildMatchCard(
-    BuildContext context, {
-    required String teamA,
-    required String teamALogo,
-    required Color teamAColor,
-    required String teamB,
-    required String teamBLogo,
-    required Color teamBColor,
-    required String date,
-    required String time,
-    required String ground,
-    required String status,
-    required Color statusColor,
-    String? score,
-    String? result,
-  }) {
     return Card(
       child: InkWell(
         onTap: () {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => MatchDetailsScreen(
-                teamA: teamA,
-                teamALogo: teamALogo,
-                teamAColor: teamAColor,
-                teamB: teamB,
-                teamBLogo: teamBLogo,
-                teamBColor: teamBColor,
-                status: status,
-              ),
+              builder: (_) => MatchScorecardScreen(match: match),
             ),
           );
         },
@@ -174,7 +149,7 @@ class MatchesListScreen extends StatelessWidget {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      status,
+                      match.status.toUpperCase(),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: statusColor,
                             fontWeight: FontWeight.bold,
@@ -182,7 +157,7 @@ class MatchesListScreen extends StatelessWidget {
                           ),
                     ),
                   ),
-                  if (status == 'LIVE')
+                  if (match.isLive)
                     Row(
                       children: [
                         Container(
@@ -214,9 +189,9 @@ class MatchesListScreen extends StatelessWidget {
                       children: [
                         CircleAvatar(
                           radius: 22,
-                          backgroundColor: teamAColor,
+                          backgroundColor: match.teamA.colorValue,
                           child: Text(
-                            teamALogo,
+                            match.teamA.initials,
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -226,7 +201,7 @@ class MatchesListScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          teamA,
+                          match.teamA.name,
                           textAlign: TextAlign.center,
                           style:
                               Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -254,9 +229,9 @@ class MatchesListScreen extends StatelessWidget {
                       children: [
                         CircleAvatar(
                           radius: 22,
-                          backgroundColor: teamBColor,
+                          backgroundColor: match.teamB.colorValue,
                           child: Text(
-                            teamBLogo,
+                            match.teamB.initials,
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -266,7 +241,7 @@ class MatchesListScreen extends StatelessWidget {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          teamB,
+                          match.teamB.name,
                           textAlign: TextAlign.center,
                           style:
                               Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -281,28 +256,10 @@ class MatchesListScreen extends StatelessWidget {
                   ),
                 ],
               ),
-              if (score != null) ...[
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color:
-                        Theme.of(context).colorScheme.primary.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    score,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                  ),
-                ),
-              ],
-              if (result != null) ...[
+              if (match.result != null) ...[
                 const SizedBox(height: 10),
                 Text(
-                  result,
+                  match.result!,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         fontWeight: FontWeight.w600,
                         color: Theme.of(context).colorScheme.secondary,
@@ -321,7 +278,18 @@ class MatchesListScreen extends StatelessWidget {
                   ),
                   const SizedBox(width: 5),
                   Text(
-                    '$date • $time',
+                    '${match.date.day}/${match.date.month}/${match.date.year}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  const SizedBox(width: 12),
+                  Icon(
+                    Icons.sports_cricket,
+                    size: 12,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 5),
+                  Text(
+                    '${match.overs} Overs',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -337,7 +305,7 @@ class MatchesListScreen extends StatelessWidget {
                   const SizedBox(width: 5),
                   Expanded(
                     child: Text(
-                      ground,
+                      match.ground,
                       style: Theme.of(context).textTheme.bodySmall,
                     ),
                   ),

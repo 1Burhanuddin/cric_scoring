@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cric_scoring/providers/match_creation_provider.dart';
+import 'package:cric_scoring/providers/firebase_providers.dart';
 
 class MatchPreviewScreen extends ConsumerStatefulWidget {
   const MatchPreviewScreen({super.key});
@@ -314,8 +315,13 @@ class _MatchPreviewScreenState extends ConsumerState<MatchPreviewScreen> {
     });
 
     try {
+      final currentUser = ref.read(currentUserProvider);
+      if (currentUser == null) {
+        throw Exception('User not authenticated');
+      }
+
       final notifier = ref.read(matchCreationProvider.notifier);
-      final matchId = await notifier.createMatch();
+      final matchId = await notifier.createMatch(currentUser.uid);
 
       if (mounted) {
         // Reset the state

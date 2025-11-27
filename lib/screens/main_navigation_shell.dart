@@ -28,11 +28,6 @@ class MainNavigation extends StatelessWidget {
             label: 'Matches',
           ),
           NavigationDestination(
-            icon: Icon(Icons.groups_outlined),
-            selectedIcon: Icon(Icons.groups),
-            label: 'Teams',
-          ),
-          NavigationDestination(
             icon: Icon(Icons.person_outline),
             selectedIcon: Icon(Icons.person),
             label: 'Profile',
@@ -46,8 +41,7 @@ class MainNavigation extends StatelessWidget {
     final String location = GoRouterState.of(context).matchedLocation;
     if (location.startsWith('/home')) return 0;
     if (location.startsWith('/matches')) return 1;
-    if (location.startsWith('/teams')) return 2;
-    if (location.startsWith('/profile')) return 3;
+    if (location.startsWith('/profile')) return 2;
     return 0;
   }
 
@@ -60,9 +54,6 @@ class MainNavigation extends StatelessWidget {
         context.go('/matches');
         break;
       case 2:
-        context.go('/teams');
-        break;
-      case 3:
         context.go('/profile');
         break;
     }

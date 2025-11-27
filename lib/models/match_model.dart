@@ -45,6 +45,8 @@ class Match {
   final String ground;
   final DateTime date;
   final String status;
+  final String createdBy; // User ID of match creator
+  final List<String> scorers; // User IDs who can score
   final String? tossWinner;
   final String? tossDecision;
   final String? battingFirst;
@@ -62,6 +64,8 @@ class Match {
     required this.ground,
     required this.date,
     required this.status,
+    required this.createdBy,
+    this.scorers = const [],
     this.tossWinner,
     this.tossDecision,
     this.battingFirst,
@@ -82,6 +86,8 @@ class Match {
       ground: data['ground'] ?? '',
       date: (data['date'] as Timestamp).toDate(),
       status: data['status'] ?? 'upcoming',
+      createdBy: data['createdBy'] ?? '',
+      scorers: List<String>.from(data['scorers'] ?? []),
       tossWinner: data['tossWinner'],
       tossDecision: data['tossDecision'],
       battingFirst: data['battingFirst'],
@@ -102,6 +108,8 @@ class Match {
       'ground': ground,
       'date': Timestamp.fromDate(date),
       'status': status,
+      'createdBy': createdBy,
+      'scorers': scorers,
       'tossWinner': tossWinner,
       'tossDecision': tossDecision,
       'battingFirst': battingFirst,
@@ -115,4 +123,9 @@ class Match {
   bool get isLive => status == 'live';
   bool get isCompleted => status == 'completed';
   bool get isUpcoming => status == 'upcoming';
+
+  // Check if user can score this match
+  bool canUserScore(String userId) {
+    return createdBy == userId || scorers.contains(userId);
+  }
 }

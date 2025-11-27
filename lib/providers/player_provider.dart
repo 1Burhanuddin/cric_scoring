@@ -28,14 +28,27 @@ final teamPlayersProvider =
     StreamProvider.family<List<TeamPlayer>, String>((ref, teamId) {
   final firestore = ref.watch(firestoreProvider);
 
+  debugPrint('teamPlayersProvider: Fetching players for team: $teamId');
+
   return firestore
       .collection('teams')
       .doc(teamId)
       .collection('players')
-      .orderBy('jerseyNumber')
       .snapshots()
       .map((snapshot) {
-    return snapshot.docs.map((doc) => TeamPlayer.fromMap(doc.data())).toList();
+    debugPrint(
+        'teamPlayersProvider: Got ${snapshot.docs.length} players for team $teamId');
+    final players = snapshot.docs.map((doc) {
+      debugPrint('  Player: ${doc.data()['name']} (${doc.id})');
+      return TeamPlayer.fromMap(doc.data());
+    }).toList();
+
+    // Sort by jersey number in memory
+    players.sort((a, b) => a.jerseyNumber.compareTo(b.jerseyNumber));
+    return players;
+  }).handleError((error) {
+    debugPrint('teamPlayersProvider ERROR for team $teamId: $error');
+    throw error;
   });
 });
 

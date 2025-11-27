@@ -22,6 +22,70 @@ final currentInningsProvider =
   });
 });
 
+// Innings 1 provider (for showing target)
+final innings1Provider =
+    StreamProvider.family<Innings?, String>((ref, matchId) {
+  final firestore = ref.watch(firestoreProvider);
+
+  return firestore
+      .collection('matches')
+      .doc(matchId)
+      .collection('innings')
+      .doc('1')
+      .snapshots()
+      .map((snapshot) {
+    if (!snapshot.exists) return null;
+    return Innings.fromFirestore(snapshot);
+  });
+});
+
+// Innings 2 provider
+final innings2Provider =
+    StreamProvider.family<Innings?, String>((ref, matchId) {
+  final firestore = ref.watch(firestoreProvider);
+
+  return firestore
+      .collection('matches')
+      .doc(matchId)
+      .collection('innings')
+      .doc('2')
+      .snapshots()
+      .map((snapshot) {
+    if (!snapshot.exists) return null;
+    return Innings.fromFirestore(snapshot);
+  });
+});
+
+// Batting stats provider
+final battingStatsProvider =
+    StreamProvider.family<List<Map<String, dynamic>>, String>((ref, matchId) {
+  final firestore = ref.watch(firestoreProvider);
+
+  return firestore
+      .collection('matches')
+      .doc(matchId)
+      .collection('batting')
+      .snapshots()
+      .map((snapshot) {
+    return snapshot.docs.map((doc) => doc.data()).toList();
+  });
+});
+
+// Bowling stats provider
+final bowlingStatsProvider =
+    StreamProvider.family<List<Map<String, dynamic>>, String>((ref, matchId) {
+  final firestore = ref.watch(firestoreProvider);
+
+  return firestore
+      .collection('matches')
+      .doc(matchId)
+      .collection('bowling')
+      .snapshots()
+      .map((snapshot) {
+    return snapshot.docs.map((doc) => doc.data()).toList();
+  });
+});
+
 // Balls in current over provider
 final currentOverBallsProvider =
     StreamProvider.family<List<Ball>, String>((ref, matchId) {
@@ -173,62 +237,191 @@ class ScoringNotifier extends StateNotifier<AsyncValue<void>> {
         .collection('innings')
         .doc(inningsNumber.toString());
 
-    final inningsDoc = await inningsRef.get();
-    final innings = Innings.fromFirestore(inningsDoc);
+    // Use transaction for immediate atomic updates
+    await _firestore.runTransaction((transaction) async {
+      final inningsDoc = await transaction.get(inningsRef);
+      final innings = Innings.fromFirestore(inningsDoc);
 
-    // Calculate new values
-    int newRuns = innings.runs;
-    int newWickets = innings.wickets;
-    double newOvers = innings.overs;
-    final newExtras = Map<String, int>.from(innings.extras);
+      // Calculate new values
+      int newRuns = innings.runs;
+      int newWickets = innings.wickets;
+      double newOvers = innings.overs;
+      final newExtras = Map<String, int>.from(innings.extras);
 
-    // Add runs
-    newRuns += runs;
-    if (isWide) {
-      newRuns += 1;
-      newExtras['wides'] = (newExtras['wides'] ?? 0) + 1;
-    }
-    if (isNoBall) {
-      newRuns += 1;
-      newExtras['noBalls'] = (newExtras['noBalls'] ?? 0) + 1;
-    }
-    if (isBye) {
-      newExtras['byes'] = (newExtras['byes'] ?? 0) + runs;
-    }
-    if (isLegBye) {
-      newExtras['legByes'] = (newExtras['legByes'] ?? 0) + runs;
-    }
-
-    // Add wicket
-    if (isWicket) {
-      newWickets += 1;
-    }
-
-    // Update overs (only if not wide or no-ball)
-    if (!isWide && !isNoBall) {
-      final currentOver = newOvers.floor();
-      final ballsInOver = ((newOvers - currentOver) * 10).round();
-
-      if (ballsInOver >= 5) {
-        // Complete over
-        newOvers = (currentOver + 1).toDouble();
-      } else {
-        // Add one ball
-        newOvers = currentOver + ((ballsInOver + 1) / 10);
+      // Add runs
+      newRuns += runs;
+      if (isWide) {
+        newRuns += 1;
+        newExtras['wides'] = (newExtras['wides'] ?? 0) + 1;
       }
+      if (isNoBall) {
+        newRuns += 1;
+        newExtras['noBalls'] = (newExtras['noBalls'] ?? 0) + 1;
+      }
+      if (isBye) {
+        newExtras['byes'] = (newExtras['byes'] ?? 0) + runs;
+      }
+      if (isLegBye) {
+        newExtras['legByes'] = (newExtras['legByes'] ?? 0) + runs;
+      }
+
+      // Add wicket
+      if (isWicket) {
+        newWickets += 1;
+      }
+
+      // Update overs (only if not wide or no-ball)
+      if (!isWide && !isNoBall) {
+        final currentOver = newOvers.floor();
+        final ballsInOver = ((newOvers - currentOver) * 10).round();
+
+        if (ballsInOver >= 5) {
+          // Complete over (6 balls done: 0,1,2,3,4,5)
+          newOvers = (currentOver + 1).toDouble();
+        } else {
+          // Add one ball properly
+          newOvers = currentOver.toDouble() + ((ballsInOver + 1) / 10.0);
+        }
+      }
+
+      // Get match details for overs limit and playing XI count
+      final matchDoc =
+          await transaction.get(_firestore.collection('matches').doc(matchId));
+      final matchData = matchDoc.data() as Map<String, dynamic>;
+      final maxOvers = matchData['overs'] ?? 20;
+
+      // Get batting team's playing XI count
+      final battingTeamId = innings.battingTeamId;
+      final playingXI = battingTeamId == matchData['teamA']['teamId']
+          ? (matchData['teamAPlayingXI'] as List?)
+          : (matchData['teamBPlayingXI'] as List?);
+      final totalPlayers = playingXI?.length ?? 11;
+      final maxWickets = totalPlayers - 1; // All out = total players - 1
+
+      // Check if innings is complete
+      bool isInningsComplete =
+          newWickets >= maxWickets || newOvers.floor() >= maxOvers;
+
+      // For innings 2, also check if target is chased
+      if (inningsNumber == 2) {
+        final innings1Doc = await transaction.get(_firestore
+            .collection('matches')
+            .doc(matchId)
+            .collection('innings')
+            .doc('1'));
+        if (innings1Doc.exists) {
+          final innings1 = Innings.fromFirestore(innings1Doc);
+          if (newRuns > innings1.runs) {
+            isInningsComplete = true; // Target chased!
+          }
+        }
+      }
+
+      transaction.update(inningsRef, {
+        'runs': newRuns,
+        'wickets': newWickets,
+        'overs': newOvers,
+        'extras': newExtras,
+        'isCompleted': isInningsComplete,
+      });
+
+      transaction.update(_firestore.collection('matches').doc(matchId), {
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+
+      return isInningsComplete;
+    }).then((isInningsComplete) async {
+      if (isInningsComplete) {
+        await _handleInningsCompletion(matchId, inningsNumber, 0);
+      }
+    });
+  }
+
+  Future<void> _handleInningsCompletion(
+      String matchId, int inningsNumber, int runs) async {
+    final matchDoc = await _firestore.collection('matches').doc(matchId).get();
+    final matchData = matchDoc.data() as Map<String, dynamic>;
+
+    if (inningsNumber == 1) {
+      // Start second innings
+      final battingTeamId =
+          matchData['teamA']['teamId'] == matchData['battingFirst']
+              ? matchData['teamB']['teamId']
+              : matchData['teamA']['teamId'];
+      final bowlingTeamId =
+          matchData['teamA']['teamId'] == matchData['battingFirst']
+              ? matchData['teamA']['teamId']
+              : matchData['teamB']['teamId'];
+
+      await _firestore
+          .collection('matches')
+          .doc(matchId)
+          .collection('innings')
+          .doc('2')
+          .update({
+        'battingTeamId': battingTeamId,
+        'bowlingTeamId': bowlingTeamId,
+      });
+    } else {
+      // Match complete - calculate result
+      await _calculateMatchResult(matchId);
+    }
+  }
+
+  Future<void> _calculateMatchResult(String matchId) async {
+    final matchDoc = await _firestore.collection('matches').doc(matchId).get();
+    final matchData = matchDoc.data() as Map<String, dynamic>;
+
+    final innings1Doc = await _firestore
+        .collection('matches')
+        .doc(matchId)
+        .collection('innings')
+        .doc('1')
+        .get();
+    final innings2Doc = await _firestore
+        .collection('matches')
+        .doc(matchId)
+        .collection('innings')
+        .doc('2')
+        .get();
+
+    final innings1 = Innings.fromFirestore(innings1Doc);
+    final innings2 = Innings.fromFirestore(innings2Doc);
+
+    // Get playing XI counts for accurate wickets calculation
+    final teamBPlayingXI = matchData['teamBPlayingXI'] as List?;
+    final totalPlayersTeamB = teamBPlayingXI?.length ?? 11;
+    final maxWicketsTeamB = totalPlayersTeamB - 1;
+
+    String result;
+    String? winnerId;
+
+    if (innings2.runs > innings1.runs) {
+      winnerId = innings2.battingTeamId;
+      final wicketsLeft = maxWicketsTeamB - innings2.wickets;
+      result =
+          '${_getTeamName(matchData, winnerId)} won by $wicketsLeft wickets';
+    } else if (innings1.runs > innings2.runs) {
+      winnerId = innings1.battingTeamId;
+      final margin = innings1.runs - innings2.runs;
+      result = '${_getTeamName(matchData, winnerId)} won by $margin runs';
+    } else {
+      result = 'Match tied';
     }
 
-    await inningsRef.update({
-      'runs': newRuns,
-      'wickets': newWickets,
-      'overs': newOvers,
-      'extras': newExtras,
-    });
-
-    // Update match timestamp
     await _firestore.collection('matches').doc(matchId).update({
+      'status': 'completed',
+      'result': result,
+      'winnerId': winnerId,
       'updatedAt': FieldValue.serverTimestamp(),
     });
+  }
+
+  String _getTeamName(Map<String, dynamic> matchData, String teamId) {
+    if (matchData['teamA']['teamId'] == teamId) {
+      return matchData['teamA']['name'];
+    }
+    return matchData['teamB']['name'];
   }
 
   // Undo last ball

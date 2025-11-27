@@ -4,8 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cric_scoring/controllers/auth_controller.dart';
 import 'package:cric_scoring/providers/user_provider.dart' as user_provider;
+import 'package:cric_scoring/providers/player_stats_provider.dart';
 import 'package:cric_scoring/screens/profile/update_player_profile_screen.dart';
-import 'package:cric_scoring/screens/admin/cleanup_firestore_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -109,47 +109,103 @@ class ProfileScreen extends ConsumerWidget {
               // Player Profile Card
               if (user.hasPlayerProfile)
                 Card(
-                  color: Colors.blue.shade50,
+                  color: theme.colorScheme.primaryContainer.withOpacity(0.3),
                   child: Padding(
                     padding: const EdgeInsets.all(16),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Player Profile',
-                          style: TextStyle(
-                              fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 12),
                         Row(
                           children: [
-                            Expanded(
-                              child: _buildInfoChip(
-                                  'Jersey #${user.jerseyNumber}'),
-                            ),
+                            Icon(Icons.sports_cricket,
+                                color: theme.colorScheme.primary, size: 20),
                             const SizedBox(width: 8),
-                            Expanded(
-                              child: _buildInfoChip(
-                                  user.playerRole!.toUpperCase()),
+                            const Text(
+                              'Player Profile',
+                              style: TextStyle(
+                                  fontSize: 16, fontWeight: FontWeight.bold),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 8),
-                        _buildInfoChip('Batting: ${user.battingStyle}'),
+                        const SizedBox(height: 16),
+                        // Jersey and Role in a row
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildInfoItem(
+                                theme,
+                                icon: Icons.tag,
+                                label: 'Jersey',
+                                value: '#${user.jerseyNumber}',
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildInfoItem(
+                                theme,
+                                icon: Icons.person,
+                                label: 'Role',
+                                value: user.playerRole!.toUpperCase(),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        // Batting Style
+                        _buildInfoItem(
+                          theme,
+                          icon: Icons.sports_cricket,
+                          label: 'Batting',
+                          value: user.battingStyle ?? 'Not specified',
+                        ),
                         if (user.bowlingStyle != null) ...[
-                          const SizedBox(height: 8),
-                          _buildInfoChip('Bowling: ${user.bowlingStyle}'),
+                          const SizedBox(height: 12),
+                          // Bowling Style
+                          _buildInfoItem(
+                            theme,
+                            icon: Icons.sports_baseball,
+                            label: 'Bowling',
+                            value: user.bowlingStyle!,
+                          ),
                         ],
                       ],
                     ),
                   ),
                 ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
-              // Profile options
+              // Player Statistics Section
+              if (user.hasPlayerProfile) ...[
+                Text(
+                  'STATISTICS',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade600,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                _buildStatsCard(context, theme, ref),
+                const SizedBox(height: 24),
+              ],
+
+              // Account Section
+              Text(
+                'ACCOUNT',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade600,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 8),
+
               _buildProfileOption(
                 context,
+                theme,
                 icon: Icons.sports_cricket,
                 title: user.hasPlayerProfile
                     ? 'Update Player Profile'
@@ -168,10 +224,38 @@ class ProfileScreen extends ConsumerWidget {
 
               _buildProfileOption(
                 context,
+                theme,
+                icon: Icons.person_outline,
+                title: 'Edit Profile',
+                subtitle: 'Update your name and email',
+                onTap: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Coming soon!')),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 24),
+
+              // App Section
+              Text(
+                'APP',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade600,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              _buildProfileOption(
+                context,
+                theme,
                 icon: Icons.notifications_outlined,
                 title: 'Notifications',
+                subtitle: 'Manage notification preferences',
                 onTap: () {
-                  // TODO: Navigate to notifications settings
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Coming soon!')),
                   );
@@ -180,59 +264,39 @@ class ProfileScreen extends ConsumerWidget {
 
               _buildProfileOption(
                 context,
-                icon: Icons.settings_outlined,
-                title: 'Settings',
-                onTap: () {
-                  // TODO: Navigate to settings
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Coming soon!')),
-                  );
-                },
-              ),
-
-              _buildProfileOption(
-                context,
-                icon: Icons.help_outline,
-                title: 'Help & Support',
-                onTap: () {
-                  // TODO: Navigate to help
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Coming soon!')),
-                  );
-                },
-              ),
-
-              _buildProfileOption(
-                context,
+                theme,
                 icon: Icons.info_outline,
                 title: 'About',
+                subtitle: 'App version and information',
                 onTap: () {
-                  // TODO: Show about dialog
                   showAboutDialog(
                     context: context,
                     applicationName: 'Cric Scoring',
                     applicationVersion: '1.0.0',
-                    applicationIcon: const Icon(Icons.sports_cricket),
+                    applicationIcon: Icon(Icons.sports_cricket,
+                        size: 48, color: theme.colorScheme.primary),
+                    children: [
+                      const Text(
+                          'A comprehensive cricket scoring application for managing matches, teams, and players.'),
+                    ],
                   );
                 },
               ),
 
               _buildProfileOption(
                 context,
-                icon: Icons.delete_sweep,
-                title: 'Cleanup Firestore',
-                subtitle: 'Delete old test data',
+                theme,
+                icon: Icons.help_outline,
+                title: 'Help & Support',
+                subtitle: 'Get help and contact support',
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const CleanupFirestoreScreen(),
-                    ),
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Coming soon!')),
                   );
                 },
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 24),
 
               // Logout button
               Card(
@@ -240,11 +304,18 @@ class ProfileScreen extends ConsumerWidget {
                   leading: const Icon(Icons.logout, color: Colors.red),
                   title: const Text(
                     'Logout',
-                    style: TextStyle(color: Colors.red),
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
+                  trailing: Icon(Icons.arrow_forward_ios,
+                      size: 16, color: Colors.grey.shade400),
                   onTap: () => _showLogoutDialog(context, ref),
                 ),
               ),
+
+              const SizedBox(height: 16),
             ],
           );
         },
@@ -255,7 +326,8 @@ class ProfileScreen extends ConsumerWidget {
   }
 
   Widget _buildProfileOption(
-    BuildContext context, {
+    BuildContext context,
+    ThemeData theme, {
     required IconData icon,
     required String title,
     String? subtitle,
@@ -263,26 +335,60 @@ class ProfileScreen extends ConsumerWidget {
   }) {
     return Card(
       child: ListTile(
-        leading: Icon(icon),
-        title: Text(title),
-        subtitle: subtitle != null ? Text(subtitle) : null,
-        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+        leading: Icon(icon, color: theme.colorScheme.primary),
+        title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
+        subtitle: subtitle != null
+            ? Text(subtitle, style: const TextStyle(fontSize: 12))
+            : null,
+        trailing: Icon(Icons.arrow_forward_ios,
+            size: 16, color: Colors.grey.shade400),
         onTap: onTap,
       ),
     );
   }
 
-  Widget _buildInfoChip(String text) {
+  Widget _buildInfoItem(
+    ThemeData theme, {
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.blue.shade200),
+        border: Border.all(color: theme.colorScheme.primary.withOpacity(0.2)),
       ),
-      child: Text(
-        text,
-        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: theme.colorScheme.primary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.grey.shade600,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -410,6 +516,310 @@ class ProfileScreen extends ConsumerWidget {
     } catch (e) {
       debugPrint('Error creating user document: $e');
     }
+  }
+
+  Widget _buildStatsCard(BuildContext context, ThemeData theme, WidgetRef ref) {
+    final statsAsync = ref.watch(currentUserStatsProvider);
+
+    return statsAsync.when(
+      data: (stats) {
+        if (stats == null) {
+          return Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Center(
+                child: Text(
+                  'No statistics available yet',
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+              ),
+            ),
+          );
+        }
+
+        return Card(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Career Stats',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primaryContainer,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '${stats.matchesPlayed} Matches',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: theme.colorScheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Batting Stats
+                Text(
+                  'BATTING',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade600,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatItem(
+                        theme,
+                        label: 'Runs',
+                        value: stats.totalRuns.toString(),
+                        icon: Icons.sports_score,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildStatItem(
+                        theme,
+                        label: 'Average',
+                        value: stats.battingAverage.toStringAsFixed(1),
+                        icon: Icons.trending_up,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildStatItem(
+                        theme,
+                        label: 'Strike Rate',
+                        value: stats.strikeRate.toStringAsFixed(1),
+                        icon: Icons.speed,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatItem(
+                        theme,
+                        label: 'High Score',
+                        value: stats.highestScore.toString(),
+                        icon: Icons.star,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildStatItem(
+                        theme,
+                        label: '50s / 100s',
+                        value: '${stats.fifties} / ${stats.hundreds}',
+                        icon: Icons.emoji_events,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildStatItem(
+                        theme,
+                        label: '4s / 6s',
+                        value: '${stats.fours} / ${stats.sixes}',
+                        icon: Icons.sports_cricket,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // Bowling Stats
+                Text(
+                  'BOWLING',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade600,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatItem(
+                        theme,
+                        label: 'Wickets',
+                        value: stats.totalWickets.toString(),
+                        icon: Icons.sports_baseball,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildStatItem(
+                        theme,
+                        label: 'Average',
+                        value: stats.bowlingAverage.toStringAsFixed(1),
+                        icon: Icons.trending_down,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildStatItem(
+                        theme,
+                        label: 'Economy',
+                        value: stats.economy.toStringAsFixed(2),
+                        icon: Icons.timer,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatItem(
+                        theme,
+                        label: 'Best',
+                        value: stats.bestBowling ?? '-',
+                        icon: Icons.military_tech,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildStatItem(
+                        theme,
+                        label: '4W / 5W',
+                        value: '${stats.fourWickets} / ${stats.fiveWickets}',
+                        icon: Icons.workspace_premium,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildStatItem(
+                        theme,
+                        label: 'Maidens',
+                        value: stats.maidens.toString(),
+                        icon: Icons.block,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 16),
+
+                // Fielding Stats
+                Text(
+                  'FIELDING',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey.shade600,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatItem(
+                        theme,
+                        label: 'Catches',
+                        value: stats.catches.toString(),
+                        icon: Icons.pan_tool,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildStatItem(
+                        theme,
+                        label: 'Run Outs',
+                        value: stats.runOuts.toString(),
+                        icon: Icons.directions_run,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildStatItem(
+                        theme,
+                        label: 'Stumpings',
+                        value: stats.stumpings.toString(),
+                        icon: Icons.sports_kabaddi,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+      loading: () => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ),
+      error: (error, _) => Card(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text('Error loading stats: $error'),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatItem(
+    ThemeData theme, {
+    required String label,
+    required String value,
+    required IconData icon,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surfaceVariant.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, size: 16, color: theme.colorScheme.primary),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 9,
+              color: Colors.grey.shade600,
+            ),
+            textAlign: TextAlign.center,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
   }
 
   void _showLogoutDialog(BuildContext context, WidgetRef ref) {

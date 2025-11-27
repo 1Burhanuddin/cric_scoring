@@ -122,11 +122,11 @@ class MatchCreationNotifier extends StateNotifier<MatchCreationState> {
     );
   }
 
-  Future<String> createMatch() async {
+  Future<String> createMatch(String createdBy) async {
     if (!state.isReadyToCreate) {
       throw Exception('Match creation state is not valid');
     }
-    return await _repository.createMatch(state);
+    return await _repository.createMatch(state, createdBy);
   }
 
   void reset() {

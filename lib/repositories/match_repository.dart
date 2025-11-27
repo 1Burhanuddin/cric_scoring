@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cric_scoring/models/match_model.dart';
 import 'package:cric_scoring/models/squad_model.dart';
 import 'package:cric_scoring/models/match_creation_state.dart';
-import 'package:cric_scoring/models/team_model.dart';
 
 class MatchRepository {
   final FirebaseFirestore _firestore;
@@ -10,7 +9,7 @@ class MatchRepository {
   MatchRepository(this._firestore);
 
   // Create new match
-  Future<String> createMatch(MatchCreationState state) async {
+  Future<String> createMatch(MatchCreationState state, String createdBy) async {
     final matchRef = _firestore.collection('matches').doc();
     final matchId = matchRef.id;
 
@@ -37,6 +36,8 @@ class MatchRepository {
       ground: state.ground,
       date: state.matchDate,
       status: 'upcoming',
+      createdBy: createdBy,
+      scorers: [], // Empty list initially
       tossWinner: state.tossWinner,
       tossDecision: state.tossDecision,
       battingFirst: state.battingFirst,

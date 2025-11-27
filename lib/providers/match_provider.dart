@@ -4,6 +4,20 @@ import 'package:cric_scoring/models/match_model.dart';
 import 'package:cric_scoring/models/team_model.dart';
 import 'package:cric_scoring/providers/firebase_providers.dart';
 
+// Single match provider
+final matchProvider = StreamProvider.family<Match?, String>((ref, matchId) {
+  final firestore = ref.watch(firestoreProvider);
+
+  return firestore
+      .collection('matches')
+      .doc(matchId)
+      .snapshots()
+      .map((snapshot) {
+    if (!snapshot.exists) return null;
+    return Match.fromFirestore(snapshot);
+  });
+});
+
 // Matches list provider
 final matchesListProvider = StreamProvider<List<Match>>((ref) {
   final firestore = ref.watch(firestoreProvider);
@@ -54,6 +68,7 @@ class MatchNotifier extends StateNotifier<AsyncValue<void>> {
     required String ground,
     required DateTime date,
     required String ballType,
+    required String createdBy,
   }) async {
     state = const AsyncValue.loading();
 
@@ -83,6 +98,8 @@ class MatchNotifier extends StateNotifier<AsyncValue<void>> {
         'date': Timestamp.fromDate(date),
         'status': 'upcoming',
         'ballType': ballType,
+        'createdBy': createdBy,
+        'scorers': [], // Empty list initially
         'createdAt': FieldValue.serverTimestamp(),
         'updatedAt': FieldValue.serverTimestamp(),
       });

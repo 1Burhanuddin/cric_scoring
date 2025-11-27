@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cric_scoring/models/match_model.dart';
+import 'package:cric_scoring/providers/firebase_providers.dart';
+import 'package:cric_scoring/screens/scoring/live_scoring_screen.dart';
+import 'package:cric_scoring/screens/match_scorecard_screen.dart';
+import 'package:cric_scoring/screens/match/toss_screen.dart';
 
-class MatchDetailsScreen extends StatelessWidget {
+class MatchDetailsScreen extends ConsumerStatefulWidget {
   final String teamA;
   final String teamALogo;
   final Color teamAColor;
@@ -8,6 +14,7 @@ class MatchDetailsScreen extends StatelessWidget {
   final String teamBLogo;
   final Color teamBColor;
   final String status;
+  final Match match;
 
   const MatchDetailsScreen({
     super.key,
@@ -18,52 +25,194 @@ class MatchDetailsScreen extends StatelessWidget {
     required this.teamBLogo,
     required this.teamBColor,
     required this.status,
+    required this.match,
   });
 
   @override
+  ConsumerState<MatchDetailsScreen> createState() => _MatchDetailsScreenState();
+}
+
+class _MatchDetailsScreenState extends ConsumerState<MatchDetailsScreen> {
+  int _selectedTabIndex = 0;
+
+  @override
   Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 4,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Match Details'),
-          centerTitle: true,
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          foregroundColor: Colors.white,
-          bottom: const TabBar(
-            indicatorColor: Colors.white,
-            labelColor: Colors.white,
-            unselectedLabelColor: Colors.white70,
-            isScrollable: true,
-            tabs: [
-              Tab(text: 'Summary'),
-              Tab(text: 'Scorecard'),
-              Tab(text: 'Squads'),
-              Tab(text: 'Overs'),
-            ],
+    final currentUser = ref.watch(authStateChangesProvider).value;
+    final canScore =
+        currentUser != null && widget.match.canUserScore(currentUser.uid);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Match Details'),
+        centerTitle: true,
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => MatchScorecardScreen(match: widget.match),
+                ),
+              );
+            },
+            icon: const Icon(Icons.scoreboard),
+            tooltip: 'View Scorecard',
+          ),
+          if (canScore && widget.match.status != 'completed')
+            IconButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => LiveScoringScreen(match: widget.match),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.sports_cricket),
+              tooltip: 'Start Scoring',
+            ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Horizontal scrollable tab chips
+          Container(
+            height: 60,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.grey.shade200,
+                  blurRadius: 4,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              children: [
+                _buildTabChip('Summary', 0),
+                const SizedBox(width: 12),
+                _buildTabChip('Scorecard', 1),
+                const SizedBox(width: 12),
+                _buildTabChip('Commentary', 2),
+              ],
+            ),
+          ),
+          // Tab content
+          Expanded(
+            child: IndexedStack(
+              index: _selectedTabIndex,
+              children: [
+                _buildSummaryTab(context),
+                _buildScorecardTab(context),
+                _buildCommentaryTab(context),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabChip(String label, int index) {
+    final isSelected = _selectedTabIndex == index;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedTabIndex = index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? Theme.of(context).colorScheme.primary
+              : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? Theme.of(context).colorScheme.primary
+                : Colors.grey.shade300,
+            width: 1,
           ),
         ),
-        body: TabBarView(
-          children: [
-            _buildSummaryTab(context),
-            _buildScorecardTab(context),
-            _buildSquadsTab(context),
-            _buildOversTab(context),
-          ],
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.grey.shade700,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+            fontSize: 14,
+          ),
         ),
       ),
     );
   }
 
   Widget _buildSummaryTab(BuildContext context) {
+    final currentUser = ref.watch(authStateChangesProvider).value;
+    final canScore =
+        currentUser != null && widget.match.canUserScore(currentUser.uid);
+
     return SingleChildScrollView(
       child: Column(
         children: [
           _buildMatchHeader(context),
           const SizedBox(height: 12),
+          // Start Scoring Button for authorized users
+          if (canScore && widget.match.status != 'completed')
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    if (widget.match.status == 'live') {
+                      // Continue scoring
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              LiveScoringScreen(match: widget.match),
+                        ),
+                      );
+                    } else {
+                      // Start match flow with toss
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => TossScreen(match: widget.match),
+                        ),
+                      );
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(Icons.sports_cricket),
+                  label: Text(
+                    widget.match.status == 'live'
+                        ? 'Continue Scoring'
+                        : 'Start Match',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          if (canScore && widget.match.status != 'completed')
+            const SizedBox(height: 12),
           _buildMatchInfo(context),
           const SizedBox(height: 12),
-          if (status == 'LIVE' || status == 'COMPLETED') ...[
+          if (widget.status == 'LIVE' || widget.status == 'COMPLETED') ...[
             _buildCurrentScore(context),
             const SizedBox(height: 12),
             _buildPartnership(context),
@@ -71,7 +220,7 @@ class MatchDetailsScreen extends StatelessWidget {
             _buildFallOfWickets(context),
             const SizedBox(height: 12),
           ],
-          if (status == 'COMPLETED') ...[
+          if (widget.status == 'COMPLETED') ...[
             _buildPlayerOfMatch(context),
             const SizedBox(height: 12),
           ],
@@ -98,9 +247,9 @@ class MatchDetailsScreen extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 32,
-                backgroundColor: teamAColor,
+                backgroundColor: widget.teamAColor,
                 child: Text(
-                  teamALogo,
+                  widget.teamALogo,
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -110,7 +259,7 @@ class MatchDetailsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                teamA,
+                widget.teamA,
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -132,9 +281,9 @@ class MatchDetailsScreen extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 32,
-                backgroundColor: teamBColor,
+                backgroundColor: widget.teamBColor,
                 child: Text(
-                  teamBLogo,
+                  widget.teamBLogo,
                   style: const TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -144,7 +293,7 @@ class MatchDetailsScreen extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(
-                teamB,
+                widget.teamB,
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
@@ -175,12 +324,12 @@ class MatchDetailsScreen extends StatelessWidget {
               const SizedBox(height: 8),
               _buildInfoRow(
                   context, Icons.location_on, 'Wankhede Stadium, Mumbai'),
-              if (status != 'UPCOMING') ...[
+              if (widget.status != 'UPCOMING') ...[
                 const SizedBox(height: 8),
                 _buildInfoRow(
                   context,
                   Icons.sports_cricket,
-                  'Toss: $teamA won and elected to bat',
+                  'Toss: ${widget.teamA} won and elected to bat',
                 ),
               ],
             ],
@@ -229,7 +378,7 @@ class MatchDetailsScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        teamA,
+                        widget.teamA,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                             ),
@@ -445,7 +594,7 @@ class MatchDetailsScreen extends StatelessWidget {
                       ],
                     ),
                   ),
-                  Icon(
+                  const Icon(
                     Icons.emoji_events,
                     color: Colors.orange,
                     size: 28,
@@ -466,7 +615,7 @@ class MatchDetailsScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '$teamA Innings',
+            '${widget.teamA} Innings',
             style: Theme.of(context).textTheme.headlineMedium,
           ),
           const SizedBox(height: 10),
@@ -475,7 +624,7 @@ class MatchDetailsScreen extends StatelessWidget {
           _buildBowlingTable(context),
           const SizedBox(height: 16),
           Text(
-            '$teamB Innings',
+            '${widget.teamB} Innings',
             style: Theme.of(context).textTheme.headlineMedium,
           ),
           const SizedBox(height: 10),
@@ -498,7 +647,8 @@ class MatchDetailsScreen extends StatelessWidget {
           columnSpacing: 16,
           horizontalMargin: 12,
           headingRowHeight: 36,
-          dataRowHeight: 32,
+          dataRowMinHeight: 32,
+          dataRowMaxHeight: 32,
           columns: [
             DataColumn(
               label: Text(
@@ -599,7 +749,8 @@ class MatchDetailsScreen extends StatelessWidget {
           columnSpacing: 16,
           horizontalMargin: 12,
           headingRowHeight: 36,
-          dataRowHeight: 32,
+          dataRowMinHeight: 32,
+          dataRowMaxHeight: 32,
           columns: [
             DataColumn(
               label: Text(
@@ -689,195 +840,175 @@ class MatchDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSquadsTab(BuildContext context) {
+  Widget _buildCommentaryTab(BuildContext context) {
     return ListView(
       padding: const EdgeInsets.all(12),
       children: [
-        Text(
-          teamA,
-          style: Theme.of(context).textTheme.headlineMedium,
+        _buildCommentaryCard(
+          context,
+          '16.4',
+          'J. Bumrah to R. Sharma',
+          'FOUR! What a shot! Sharma drives it through the covers for a boundary.',
+          '4',
+          Colors.green,
         ),
-        const SizedBox(height: 10),
-        _buildSquadList(context, [
-          {'name': 'Rohit Sharma', 'role': 'Batsman'},
-          {'name': 'Virat Kohli', 'role': 'Batsman'},
-          {'name': 'Ishan Kishan', 'role': 'Wicket-keeper'},
-          {'name': 'Suryakumar Yadav', 'role': 'Batsman'},
-          {'name': 'Hardik Pandya', 'role': 'All-rounder'},
-          {'name': 'Ravindra Jadeja', 'role': 'All-rounder'},
-          {'name': 'Jasprit Bumrah', 'role': 'Bowler'},
-          {'name': 'Mohammed Siraj', 'role': 'Bowler'},
-          {'name': 'Yuzvendra Chahal', 'role': 'Bowler'},
-          {'name': 'Kuldeep Yadav', 'role': 'Bowler'},
-          {'name': 'Shubman Gill', 'role': 'Batsman'},
-        ]),
-        const SizedBox(height: 16),
-        Text(
-          teamB,
-          style: Theme.of(context).textTheme.headlineMedium,
+        const SizedBox(height: 8),
+        _buildCommentaryCard(
+          context,
+          '16.3',
+          'J. Bumrah to R. Sharma',
+          'Good length delivery, defended back to the bowler.',
+          '0',
+          Colors.grey,
         ),
-        const SizedBox(height: 10),
-        _buildSquadList(context, [
-          {'name': 'MS Dhoni', 'role': 'Wicket-keeper'},
-          {'name': 'Ruturaj Gaikwad', 'role': 'Batsman'},
-          {'name': 'Devon Conway', 'role': 'Batsman'},
-          {'name': 'Ajinkya Rahane', 'role': 'Batsman'},
-          {'name': 'Shivam Dube', 'role': 'All-rounder'},
-          {'name': 'Ravindra Jadeja', 'role': 'All-rounder'},
-          {'name': 'Deepak Chahar', 'role': 'Bowler'},
-          {'name': 'Tushar Deshpande', 'role': 'Bowler'},
-          {'name': 'Maheesh Theekshana', 'role': 'Bowler'},
-          {'name': 'Matheesha Pathirana', 'role': 'Bowler'},
-          {'name': 'Moeen Ali', 'role': 'All-rounder'},
-        ]),
+        const SizedBox(height: 8),
+        _buildCommentaryCard(
+          context,
+          '16.2',
+          'J. Bumrah to R. Sharma',
+          'SIX! Massive hit! Sharma pulls it over mid-wicket for a maximum!',
+          '6',
+          Colors.purple,
+        ),
+        const SizedBox(height: 8),
+        _buildCommentaryCard(
+          context,
+          '16.1',
+          'J. Bumrah to S. Yadav',
+          'Single taken to mid-on. Good running between the wickets.',
+          '1',
+          Colors.grey,
+        ),
+        const SizedBox(height: 8),
+        _buildCommentaryCard(
+          context,
+          '15.6',
+          'M. Siraj to R. Sharma',
+          'Two runs taken. Sharma pushes it to deep cover.',
+          '2',
+          Colors.grey,
+        ),
+        const SizedBox(height: 8),
+        _buildCommentaryCard(
+          context,
+          '15.5',
+          'M. Siraj to R. Sharma',
+          'FOUR! Beautiful cover drive! Races away to the boundary.',
+          '4',
+          Colors.green,
+        ),
+        const SizedBox(height: 8),
+        _buildCommentaryCard(
+          context,
+          '15.4',
+          'M. Siraj to H. Pandya',
+          'OUT! Caught behind! Pandya edges it to the keeper. Big wicket!',
+          'W',
+          Colors.red,
+        ),
+        const SizedBox(height: 8),
+        _buildCommentaryCard(
+          context,
+          '15.3',
+          'M. Siraj to H. Pandya',
+          'Dot ball. Good length, defended to point.',
+          '0',
+          Colors.grey,
+        ),
+        const SizedBox(height: 8),
+        _buildCommentaryCard(
+          context,
+          '15.2',
+          'M. Siraj to H. Pandya',
+          'Single to third man. Pandya opens the face of the bat.',
+          '1',
+          Colors.grey,
+        ),
+        const SizedBox(height: 8),
+        _buildCommentaryCard(
+          context,
+          '15.1',
+          'M. Siraj to R. Sharma',
+          'One run. Sharma taps it to cover and takes a quick single.',
+          '1',
+          Colors.grey,
+        ),
       ],
     );
   }
 
-  Widget _buildSquadList(
-      BuildContext context, List<Map<String, String>> players) {
-    return Column(
-      children: players.map((player) {
-        return Card(
-          margin: const EdgeInsets.only(bottom: 6),
-          child: Padding(
-            padding: const EdgeInsets.all(10),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 18,
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  child: Text(
-                    player['name']!.split(' ').map((e) => e[0]).join(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 11,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        player['name']!,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        player['role']!,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildOversTab(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(12),
-      children: [
-        Text(
-          'Ball by Ball',
-          style: Theme.of(context).textTheme.headlineMedium,
-        ),
-        const SizedBox(height: 10),
-        _buildOverCard(context, '16.4', 'J. Bumrah', [
-          {'ball': '1', 'color': Colors.grey},
-          {'ball': '4', 'color': Colors.green},
-          {'ball': '0', 'color': Colors.grey},
-          {'ball': '6', 'color': Colors.purple},
-          {'ball': '2', 'color': Colors.grey},
-        ]),
-        const SizedBox(height: 8),
-        _buildOverCard(context, '16', 'M. Siraj', [
-          {'ball': '1', 'color': Colors.grey},
-          {'ball': '0', 'color': Colors.grey},
-          {'ball': 'W', 'color': Colors.red},
-          {'ball': '4', 'color': Colors.green},
-          {'ball': '1', 'color': Colors.grey},
-          {'ball': '2', 'color': Colors.grey},
-        ]),
-        const SizedBox(height: 8),
-        _buildOverCard(context, '15', 'Y. Chahal', [
-          {'ball': '1', 'color': Colors.grey},
-          {'ball': '1', 'color': Colors.grey},
-          {'ball': '4', 'color': Colors.green},
-          {'ball': '0', 'color': Colors.grey},
-          {'ball': '1', 'color': Colors.grey},
-          {'ball': '6', 'color': Colors.purple},
-        ]),
-      ],
-    );
-  }
-
-  Widget _buildOverCard(
+  Widget _buildCommentaryCard(
     BuildContext context,
     String over,
-    String bowler,
-    List<Map<String, dynamic>> balls,
+    String bowlerToBatsman,
+    String commentary,
+    String runs,
+    Color runsColor,
   ) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12),
-        child: Column(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Over $over',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+            // Runs indicator
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: runsColor.withOpacity(0.1),
+                border: Border.all(
+                  color: runsColor,
+                  width: 1.5,
                 ),
-                Text(
-                  bowler,
-                  style: Theme.of(context).textTheme.bodySmall,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Center(
+                child: Text(
+                  runs,
+                  style: TextStyle(
+                    color: runsColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
                 ),
-              ],
+              ),
             ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 6,
-              runSpacing: 6,
-              children: balls.map((ball) {
-                return Container(
-                  width: 32,
-                  height: 32,
-                  decoration: BoxDecoration(
-                    color: (ball['color'] as Color).withOpacity(0.1),
-                    border: Border.all(
-                      color: ball['color'] as Color,
-                      width: 1.5,
-                    ),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Center(
-                    child: Text(
-                      ball['ball'] as String,
-                      style: TextStyle(
-                        color: ball['color'] as Color,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
+            const SizedBox(width: 12),
+            // Commentary text
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        over,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.primary,
+                            ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          bowlerToBatsman,
+                          style:
+                              Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
-                );
-              }).toList(),
+                  const SizedBox(height: 4),
+                  Text(
+                    commentary,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
