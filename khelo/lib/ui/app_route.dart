@@ -20,6 +20,7 @@ import 'package:cricheros/ui/flow/matches/match_detail/match_detail_tab_screen.d
 import 'package:cricheros/ui/flow/profile/components/qr_code_view.dart';
 import 'package:cricheros/ui/flow/score_board/add_toss_detail/add_toss_detail_screen.dart';
 import 'package:cricheros/ui/flow/score_board/score_board_screen.dart';
+import 'package:cricheros/ui/flow/score_board/scorecard_share/scorecard_share_screen.dart';
 import 'package:cricheros/ui/flow/settings/edit_profile/edit_profile_screen.dart';
 import 'package:cricheros/ui/flow/sign_in/phone_verification/phone_verification_screen.dart';
 import 'package:cricheros/ui/flow/team/add_team/add_team_screen.dart';
@@ -54,6 +55,7 @@ class AppRoute {
   static const pathAddMatch = '/add-match';
   static const pathAddTossDetail = '/add-toss-detail';
   static const pathScoreBoard = '/score-board';
+  static const pathScorecardShare = '/scorecard-share';
   static const pathScannerScreen = '/scanner-screen';
   static const pathQrCode = '/qr-code';
   static const pathTeamDetail = '/team-detail';
@@ -158,6 +160,11 @@ class AppRoute {
   static AppRoute scoreBoard({required String matchId}) => AppRoute(
         pathScoreBoard,
         builder: (_) => ScoreBoardScreen(matchId: matchId),
+      );
+
+  static AppRoute scorecardShare({required String matchId}) => AppRoute(
+        pathScorecardShare,
+        builder: (_) => ScorecardShareScreen(matchId: matchId),
       );
 
   static AppRoute viewAll(
@@ -379,6 +386,10 @@ class AppRoute {
     ),
     GoRoute(
       path: pathScoreBoard,
+      builder: (context, state) => state.widget(context),
+    ),
+    GoRoute(
+      path: pathScorecardShare,
       builder: (context, state) => state.widget(context),
     ),
     GoRoute(

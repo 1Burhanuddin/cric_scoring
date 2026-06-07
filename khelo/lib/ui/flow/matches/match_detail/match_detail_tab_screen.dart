@@ -7,6 +7,7 @@ import 'package:cricheros/domain/extensions/context_extensions.dart';
 import 'package:cricheros/domain/extensions/string_extensions.dart';
 import 'package:cricheros/domain/extensions/widget_extension.dart';
 import 'package:cricheros/main.dart';
+import 'package:cricheros/ui/app_route.dart';
 import 'package:cricheros/ui/flow/matches/match_detail/match_detail_tab_view_model.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:cricheros_style/button/action_button.dart';
@@ -57,6 +58,16 @@ class _MatchDetailTabScreenState extends ConsumerState<MatchDetailTabScreen> {
     return AppPage(
       title: _getScreenTitle(context, state),
       actions: [
+        actionButton(
+          context,
+          icon: Icon(
+            Icons.image_outlined,
+            size: 20,
+            color: context.colorScheme.textPrimary,
+          ),
+          onPressed: () =>
+              AppRoute.scorecardShare(matchId: widget.matchId).push(context),
+        ),
         actionButton(
           context,
           icon: Icon(

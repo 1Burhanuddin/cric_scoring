@@ -1,3 +1,12 @@
 *.swp
 .idea/
 .DS_Store
+
+# Android signing — never commit signing material
+*.keystore
+*.jks
+key.properties
+
+# Firebase config — already tracked in this repo, but it contains API keys.
+# Keep it out of any NEW clones/modules and never add additional copies.
+# google-services.json
