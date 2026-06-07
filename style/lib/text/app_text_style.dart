@@ -5,7 +5,7 @@ class AppTextStyle {
 
   static const TextStyle header1 = TextStyle(
     fontFamily: poppinsFontFamily,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.bold,
     fontSize: 26,
     letterSpacing: -0.64,
     height: 1.2,
@@ -14,7 +14,7 @@ class AppTextStyle {
 
   static const TextStyle header2 = TextStyle(
     fontFamily: poppinsFontFamily,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.bold,
     fontSize: 22,
     height: 1.2,
     letterSpacing: -0.64,
@@ -23,7 +23,7 @@ class AppTextStyle {
 
   static const TextStyle header3 = TextStyle(
     fontFamily: poppinsFontFamily,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.bold,
     fontSize: 20,
     height: 1.2,
     letterSpacing: -0.64,
@@ -32,7 +32,7 @@ class AppTextStyle {
 
   static const TextStyle header4 = TextStyle(
     fontFamily: poppinsFontFamily,
-    fontWeight: FontWeight.w600,
+    fontWeight: FontWeight.bold,
     fontSize: 18,
     height: 1.2,
     letterSpacing: -0.64,

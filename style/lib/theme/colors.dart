@@ -2,35 +2,46 @@ import 'package:flutter/material.dart';
 
 import '../text/app_text_style.dart';
 
-const primaryLightColor = Color(0xFF01579B);
-const primaryDarkColor = Color(0xFF66BDFF);
+// CricHeros brand palette
+// Primary Red #E21C28 / Dark Red #B01020, Teal accent #18958F / Dark Teal #0F6B67.
+const primaryLightColor = Color(0xFFE21C28);
+const primaryDarkColor = Color(0xFFE21C28);
 
-const primaryVariantLightColor = Color(0x4D01579B);
-const primaryVariantDarkColor = Color(0x6601579B);
+const darkPrimaryColor = Color(0xFFB01020);
 
-const secondaryColor = Color(0xFFF57F17);
+const primaryVariantLightColor = Color(0x4DE21C28);
+const primaryVariantDarkColor = Color(0x66E21C28);
 
-const containerHighLightColor = Color(0x1401345D);
-const containerNormalLightColor = Color(0x0F01345D);
-const containerLowLightColor = Color(0x0A01345D);
+const secondaryColor = Color(0xFF18958F);
+const darkSecondaryColor = Color(0xFF0F6B67);
+
+// Dark navy used behind scorecards / share cards.
+const scoreCardColor = Color(0xFF1A1A2E);
+
+const containerHighLightColor = Color(0x14191919);
+const containerNormalLightColor = Color(0x0F191919);
+const containerLowLightColor = Color(0x0A191919);
 
 const containerHighDarkColor = Color(0x3DD1E1ED);
 const containerNormalDarkColor = Color(0x29D1E1ED);
 const containerLowDarkColor = Color(0x14D1E1ED);
 
-const textPrimaryLightColor = Color(0xDE000000);
-const textSecondaryLightColor = Color(0x99000000);
+const textPrimaryLightColor = Color(0xFF191919);
+const textSecondaryLightColor = Color(0xFF9E9E9E);
 const textDisabledLightColor = Color(0x66000000);
 
 const textPrimaryDarkColor = Color(0xFFFFFFFF);
-const textSecondaryDarkColor = Color(0xDEFFFFFF);
+const textSecondaryDarkColor = Color(0xFF9E9E9E);
 const textDisabledDarkColor = Color(0x99FFFFFF);
 
 const outlineLightColor = Color(0x14000000);
 const outlineDarkColor = Color(0x1FFFFFFF);
 
+const backgroundLightColor = Color(0xFFF5F5F5);
+const backgroundDarkColor = Color(0xFF1A1A2E);
+
 const surfaceLightColor = Color(0xFFFFFFFF);
-const surfaceDarkColor = Color(0xFF212121);
+const surfaceDarkColor = Color(0xFF16213E);
 
 const awarenessAlertColor = Color(0xFFC62828);
 const awarenessPositiveColor = Color(0xFF4CAF50);
@@ -69,17 +80,53 @@ final ThemeData materialThemeDataLight = _materialLightTheme.copyWith(
     secondary: secondaryColor,
     surface: surfaceLightColor,
     onPrimary: textPrimaryDarkColor,
-    onSecondary: textSecondaryDarkColor,
+    onSecondary: textPrimaryDarkColor,
     onSurface: textPrimaryLightColor,
   ),
-  scaffoldBackgroundColor: surfaceLightColor,
+  scaffoldBackgroundColor: backgroundLightColor,
   appBarTheme: _materialLightTheme.appBarTheme.copyWith(
-    backgroundColor: surfaceLightColor,
-    surfaceTintColor: containerLowLightColor,
+    backgroundColor: primaryLightColor,
+    foregroundColor: textPrimaryDarkColor,
+    surfaceTintColor: primaryLightColor,
+    iconTheme: const IconThemeData(color: textPrimaryDarkColor),
     titleTextStyle: _materialLightTheme.appBarTheme.titleTextStyle?.copyWith(
+      color: textPrimaryDarkColor,
       fontFamily: AppTextStyle.poppinsFontFamily,
       package: 'style',
     ),
+  ),
+  floatingActionButtonTheme: const FloatingActionButtonThemeData(
+    backgroundColor: primaryLightColor,
+    foregroundColor: textPrimaryDarkColor,
+  ),
+  elevatedButtonTheme: ElevatedButtonThemeData(
+    style: ElevatedButton.styleFrom(
+      backgroundColor: primaryLightColor,
+      foregroundColor: textPrimaryDarkColor,
+    ),
+  ),
+  textButtonTheme: TextButtonThemeData(
+    style: TextButton.styleFrom(foregroundColor: primaryLightColor),
+  ),
+  outlinedButtonTheme: OutlinedButtonThemeData(
+    style: OutlinedButton.styleFrom(foregroundColor: primaryLightColor),
+  ),
+  bottomNavigationBarTheme: _materialLightTheme.bottomNavigationBarTheme
+      .copyWith(
+    selectedItemColor: primaryLightColor,
+    unselectedItemColor: textSecondaryLightColor,
+  ),
+  switchTheme: SwitchThemeData(
+    thumbColor: WidgetStateProperty.resolveWith((states) =>
+        states.contains(WidgetState.selected) ? secondaryColor : null),
+    trackColor: WidgetStateProperty.resolveWith((states) =>
+        states.contains(WidgetState.selected)
+            ? secondaryColor.withValues(alpha: 0.5)
+            : null),
+  ),
+  checkboxTheme: CheckboxThemeData(
+    fillColor: WidgetStateProperty.resolveWith((states) =>
+        states.contains(WidgetState.selected) ? secondaryColor : null),
   ),
 );
 
@@ -111,18 +158,54 @@ final ThemeData materialThemeDataDark = _materialDarkTheme.copyWith(
     primary: primaryDarkColor,
     secondary: secondaryColor,
     surface: surfaceDarkColor,
-    onPrimary: textPrimaryLightColor,
-    onSecondary: textSecondaryLightColor,
+    onPrimary: textPrimaryDarkColor,
+    onSecondary: textPrimaryDarkColor,
     onSurface: textPrimaryDarkColor,
   ),
-  scaffoldBackgroundColor: surfaceDarkColor,
+  scaffoldBackgroundColor: backgroundDarkColor,
   appBarTheme: _materialDarkTheme.appBarTheme.copyWith(
-    backgroundColor: surfaceDarkColor,
-    surfaceTintColor: containerLowDarkColor,
+    backgroundColor: primaryDarkColor,
+    foregroundColor: textPrimaryDarkColor,
+    surfaceTintColor: primaryDarkColor,
+    iconTheme: const IconThemeData(color: textPrimaryDarkColor),
     titleTextStyle: _materialDarkTheme.appBarTheme.titleTextStyle?.copyWith(
+      color: textPrimaryDarkColor,
       fontFamily: AppTextStyle.poppinsFontFamily,
       package: 'style',
     ),
+  ),
+  floatingActionButtonTheme: const FloatingActionButtonThemeData(
+    backgroundColor: primaryDarkColor,
+    foregroundColor: textPrimaryDarkColor,
+  ),
+  elevatedButtonTheme: ElevatedButtonThemeData(
+    style: ElevatedButton.styleFrom(
+      backgroundColor: primaryDarkColor,
+      foregroundColor: textPrimaryDarkColor,
+    ),
+  ),
+  textButtonTheme: TextButtonThemeData(
+    style: TextButton.styleFrom(foregroundColor: primaryDarkColor),
+  ),
+  outlinedButtonTheme: OutlinedButtonThemeData(
+    style: OutlinedButton.styleFrom(foregroundColor: primaryDarkColor),
+  ),
+  bottomNavigationBarTheme: _materialDarkTheme.bottomNavigationBarTheme.copyWith(
+    selectedItemColor: primaryDarkColor,
+    unselectedItemColor: textSecondaryDarkColor,
+    backgroundColor: surfaceDarkColor,
+  ),
+  switchTheme: SwitchThemeData(
+    thumbColor: WidgetStateProperty.resolveWith((states) =>
+        states.contains(WidgetState.selected) ? secondaryColor : null),
+    trackColor: WidgetStateProperty.resolveWith((states) =>
+        states.contains(WidgetState.selected)
+            ? secondaryColor.withValues(alpha: 0.5)
+            : null),
+  ),
+  checkboxTheme: CheckboxThemeData(
+    fillColor: WidgetStateProperty.resolveWith((states) =>
+        states.contains(WidgetState.selected) ? secondaryColor : null),
   ),
 );
 
