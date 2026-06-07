@@ -3,11 +3,11 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:khelo/domain/extensions/string_extensions.dart';
-import 'package:style/button/action_button.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/indicator/progress_indicator.dart';
-import 'package:style/text/app_text_style.dart';
+import 'package:cricheros/domain/extensions/string_extensions.dart';
+import 'package:cricheros_style/button/action_button.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/indicator/progress_indicator.dart';
+import 'package:cricheros_style/text/app_text_style.dart';
 
 class AttachmentsTypeView extends StatelessWidget {
   final String path;

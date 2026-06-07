@@ -1,5 +1,5 @@
-name: style
-description: "A new Flutter project."
+name: cricheros_style
+description: "CricHeros shared design system - theme, colors, typography and assets."
 version: 0.0.1
 
 environment:

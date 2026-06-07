@@ -1,6 +1,6 @@
 import 'package:canopas_country_picker/canopas_country_picker.dart';
-import 'package:data/service/auth/auth_service.dart';
-import 'package:data/service/device/device_service.dart';
+import 'package:cricheros_data/service/auth/auth_service.dart';
+import 'package:cricheros_data/service/device/device_service.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

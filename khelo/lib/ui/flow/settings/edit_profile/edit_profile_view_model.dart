@@ -1,22 +1,22 @@
 import 'dart:io';
 
-import 'package:data/api/user/user_models.dart';
-import 'package:data/errors/app_error.dart';
-import 'package:data/service/auth/auth_service.dart';
-import 'package:data/service/file_upload/file_upload_service.dart';
-import 'package:data/service/match/match_service.dart';
-import 'package:data/service/team/team_service.dart';
-import 'package:data/service/tournament/tournament_service.dart';
-import 'package:data/service/user/user_service.dart';
-import 'package:data/storage/app_preferences.dart';
-import 'package:data/storage/provider/preferences_provider.dart';
-import 'package:data/utils/constant/firebase_storage_constant.dart';
+import 'package:cricheros_data/api/user/user_models.dart';
+import 'package:cricheros_data/errors/app_error.dart';
+import 'package:cricheros_data/service/auth/auth_service.dart';
+import 'package:cricheros_data/service/file_upload/file_upload_service.dart';
+import 'package:cricheros_data/service/match/match_service.dart';
+import 'package:cricheros_data/service/team/team_service.dart';
+import 'package:cricheros_data/service/tournament/tournament_service.dart';
+import 'package:cricheros_data/service/user/user_service.dart';
+import 'package:cricheros_data/storage/app_preferences.dart';
+import 'package:cricheros_data/storage/provider/preferences_provider.dart';
+import 'package:cricheros_data/utils/constant/firebase_storage_constant.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:khelo/domain/extensions/file_extension.dart';
-import 'package:khelo/domain/extensions/string_extensions.dart';
+import 'package:cricheros/domain/extensions/file_extension.dart';
+import 'package:cricheros/domain/extensions/string_extensions.dart';
 
 part 'edit_profile_view_model.freezed.dart';
 

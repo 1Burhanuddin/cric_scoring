@@ -2,11 +2,11 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:khelo/ui/flow/score_board/score_board_view_model.dart';
-import 'package:style/animations/on_tap_scale.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/text/app_text_style.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros/ui/flow/score_board/score_board_view_model.dart';
+import 'package:cricheros_style/animations/on_tap_scale.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/text/app_text_style.dart';
 
 class ScoreBoardButtons extends StatelessWidget {
   final Function(ScoreButton, bool) onTap;

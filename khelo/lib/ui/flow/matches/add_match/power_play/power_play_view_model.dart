@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
 
 part 'power_play_view_model.freezed.dart';
 

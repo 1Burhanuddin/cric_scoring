@@ -1,17 +1,17 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:khelo/components/app_page.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:khelo/ui/app_route.dart';
-import 'package:khelo/ui/flow/matches/match_list_screen.dart';
-import 'package:khelo/ui/flow/my_game/my_game_tab_view_model.dart';
-import 'package:khelo/ui/flow/team/team_list_screen.dart';
-import 'package:khelo/ui/flow/team/team_list_view_model.dart';
-import 'package:khelo/ui/flow/tournament/tournament_list_screen.dart';
-import 'package:style/button/action_button.dart';
-import 'package:style/button/tab_button.dart';
-import 'package:style/extensions/context_extensions.dart';
+import 'package:cricheros/components/app_page.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros/ui/app_route.dart';
+import 'package:cricheros/ui/flow/matches/match_list_screen.dart';
+import 'package:cricheros/ui/flow/my_game/my_game_tab_view_model.dart';
+import 'package:cricheros/ui/flow/team/team_list_screen.dart';
+import 'package:cricheros/ui/flow/team/team_list_view_model.dart';
+import 'package:cricheros/ui/flow/tournament/tournament_list_screen.dart';
+import 'package:cricheros_style/button/action_button.dart';
+import 'package:cricheros_style/button/tab_button.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
 
 class MyGameTabScreen extends ConsumerStatefulWidget {
   const MyGameTabScreen({super.key});

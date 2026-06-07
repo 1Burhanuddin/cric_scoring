@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:data/api/match/match_model.dart';
-import 'package:data/service/match/match_service.dart';
-import 'package:data/storage/app_preferences.dart';
+import 'package:cricheros_data/api/match/match_model.dart';
+import 'package:cricheros_data/service/match/match_service.dart';
+import 'package:cricheros_data/storage/app_preferences.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';

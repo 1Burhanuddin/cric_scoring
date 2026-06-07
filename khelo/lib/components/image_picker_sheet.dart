@@ -5,10 +5,10 @@ import 'package:flutter_svg/svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:style/animations/on_tap_scale.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/text/app_text_style.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros_style/animations/on_tap_scale.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/text/app_text_style.dart';
 
 import '../gen/assets.gen.dart';
 

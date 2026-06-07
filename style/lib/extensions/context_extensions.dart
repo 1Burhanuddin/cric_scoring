@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:style/theme/colors.dart';
+import 'package:cricheros_style/theme/colors.dart';
 
 import '../theme/theme.dart';
 

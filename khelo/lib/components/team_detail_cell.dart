@@ -1,11 +1,11 @@
-import 'package:data/api/team/team_model.dart';
+import 'package:cricheros_data/api/team/team_model.dart';
 import 'package:flutter/material.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:khelo/domain/extensions/string_extensions.dart';
-import 'package:style/animations/on_tap_scale.dart';
-import 'package:style/button/more_option_button.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/text/app_text_style.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros/domain/extensions/string_extensions.dart';
+import 'package:cricheros_style/animations/on_tap_scale.dart';
+import 'package:cricheros_style/button/more_option_button.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/text/app_text_style.dart';
 
 import 'image_avatar.dart';
 

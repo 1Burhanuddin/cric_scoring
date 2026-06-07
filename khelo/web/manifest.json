@@ -1,11 +1,11 @@
 {
-    "name": "khelo",
-    "short_name": "khelo",
+    "name": "CricHeros",
+    "short_name": "CricHeros",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "CricHeros - a cricket scoring and tournament management app.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

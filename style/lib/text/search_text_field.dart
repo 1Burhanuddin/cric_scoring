@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/text/app_text_field.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/text/app_text_field.dart';
 
 import 'app_text_style.dart';
 

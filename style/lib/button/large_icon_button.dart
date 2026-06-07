@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
-import 'package:style/animations/on_tap_scale.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/indicator/progress_indicator.dart';
+import 'package:cricheros_style/animations/on_tap_scale.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/indicator/progress_indicator.dart';
 
 class LargeIconButton extends StatelessWidget {
   final Color? backgroundColor;

@@ -1,23 +1,23 @@
 import 'dart:math';
 
-import 'package:data/api/team/team_model.dart';
-import 'package:data/api/user/user_models.dart';
+import 'package:cricheros_data/api/team/team_model.dart';
+import 'package:cricheros_data/api/user/user_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:khelo/domain/extensions/widget_extension.dart';
-import 'package:khelo/gen/assets.gen.dart';
-import 'package:khelo/ui/app_route.dart';
-import 'package:khelo/ui/flow/team/scanner/scanner_view_model.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros/domain/extensions/widget_extension.dart';
+import 'package:cricheros/gen/assets.gen.dart';
+import 'package:cricheros/ui/app_route.dart';
+import 'package:cricheros/ui/flow/team/scanner/scanner_view_model.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:qr_code_scanner/qr_code_scanner.dart';
-import 'package:style/animations/on_tap_scale.dart';
-import 'package:style/button/action_button.dart';
-import 'package:style/button/primary_button.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/text/app_text_style.dart';
+import 'package:cricheros_style/animations/on_tap_scale.dart';
+import 'package:cricheros_style/button/action_button.dart';
+import 'package:cricheros_style/button/primary_button.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/text/app_text_style.dart';
 
 import '../../../../components/app_page.dart';
 import '../../../../components/error_snackbar.dart';

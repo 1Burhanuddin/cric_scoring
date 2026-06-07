@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'package:collection/collection.dart';
-import 'package:data/api/tournament/tournament_model.dart';
-import 'package:data/service/tournament/tournament_service.dart';
-import 'package:data/storage/app_preferences.dart';
+import 'package:cricheros_data/api/tournament/tournament_model.dart';
+import 'package:cricheros_data/service/tournament/tournament_service.dart';
+import 'package:cricheros_data/storage/app_preferences.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:style/extensions/date_extensions.dart';
+import 'package:cricheros_style/extensions/date_extensions.dart';
 
 part 'tournament_list_view_model.freezed.dart';
 

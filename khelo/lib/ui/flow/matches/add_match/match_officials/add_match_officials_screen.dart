@@ -1,20 +1,20 @@
-import 'package:data/api/user/user_models.dart';
+import 'package:cricheros_data/api/user/user_models.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:khelo/components/app_page.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:khelo/domain/extensions/widget_extension.dart';
-import 'package:khelo/ui/flow/matches/add_match/match_officials/components/officials_cell_view.dart';
-import 'package:khelo/ui/flow/matches/add_match/match_officials/search_user/search_user_screen.dart';
-import 'package:style/button/back_button.dart';
-import 'package:style/button/bottom_sticky_overlay.dart';
-import 'package:style/button/primary_button.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/text/app_text_style.dart';
+import 'package:cricheros/components/app_page.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros/domain/extensions/widget_extension.dart';
+import 'package:cricheros/ui/flow/matches/add_match/match_officials/components/officials_cell_view.dart';
+import 'package:cricheros/ui/flow/matches/add_match/match_officials/search_user/search_user_screen.dart';
+import 'package:cricheros_style/button/back_button.dart';
+import 'package:cricheros_style/button/bottom_sticky_overlay.dart';
+import 'package:cricheros_style/button/primary_button.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/text/app_text_style.dart';
 
 import 'add_match_officials_view_model.dart';
 

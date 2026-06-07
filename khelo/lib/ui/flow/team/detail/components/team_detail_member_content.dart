@@ -1,14 +1,14 @@
-import 'package:data/api/team/team_model.dart';
+import 'package:cricheros_data/api/team/team_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:khelo/components/empty_screen.dart';
-import 'package:khelo/components/user_detail_cell.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:khelo/ui/app_route.dart';
-import 'package:khelo/ui/flow/team/detail/team_detail_view_model.dart';
-import 'package:style/animations/on_tap_scale.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/text/app_text_style.dart';
+import 'package:cricheros/components/empty_screen.dart';
+import 'package:cricheros/components/user_detail_cell.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros/ui/app_route.dart';
+import 'package:cricheros/ui/flow/team/detail/team_detail_view_model.dart';
+import 'package:cricheros_style/animations/on_tap_scale.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/text/app_text_style.dart';
 
 class TeamDetailMemberContent extends ConsumerWidget {
   const TeamDetailMemberContent({super.key});

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:style/extensions/context_extensions.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
 
 import '../gen/assets.gen.dart';
 

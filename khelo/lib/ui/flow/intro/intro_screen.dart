@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:khelo/components/app_page.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:khelo/gen/assets.gen.dart';
-import 'package:style/button/bottom_sticky_overlay.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/text/app_text_style.dart';
-import 'package:style/button/primary_button.dart';
+import 'package:cricheros/components/app_page.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros/gen/assets.gen.dart';
+import 'package:cricheros_style/button/bottom_sticky_overlay.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/text/app_text_style.dart';
+import 'package:cricheros_style/button/primary_button.dart';
 
 import '../../app_route.dart';
 

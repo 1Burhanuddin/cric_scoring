@@ -1,17 +1,17 @@
 import 'dart:async';
 
-import 'package:data/api/leaderboard/leaderboard_model.dart';
-import 'package:data/api/match/match_model.dart';
-import 'package:data/api/tournament/tournament_model.dart';
-import 'package:data/service/leaderboard/leaderboard_service.dart';
-import 'package:data/service/match/match_service.dart';
-import 'package:data/service/tournament/tournament_service.dart';
-import 'package:data/storage/app_preferences.dart';
-import 'package:data/utils/combine_latest.dart';
+import 'package:cricheros_data/api/leaderboard/leaderboard_model.dart';
+import 'package:cricheros_data/api/match/match_model.dart';
+import 'package:cricheros_data/api/tournament/tournament_model.dart';
+import 'package:cricheros_data/service/leaderboard/leaderboard_service.dart';
+import 'package:cricheros_data/service/match/match_service.dart';
+import 'package:cricheros_data/service/tournament/tournament_service.dart';
+import 'package:cricheros_data/storage/app_preferences.dart';
+import 'package:cricheros_data/utils/combine_latest.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
 
 part 'home_view_model.freezed.dart';
 

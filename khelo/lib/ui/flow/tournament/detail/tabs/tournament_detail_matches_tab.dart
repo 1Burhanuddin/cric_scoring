@@ -1,12 +1,12 @@
-import 'package:data/api/team/team_model.dart';
+import 'package:cricheros_data/api/team/team_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:khelo/components/match_detail_cell.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:khelo/ui/app_route.dart';
-import 'package:khelo/ui/flow/tournament/detail/components/filter_tab_view.dart';
-import 'package:style/extensions/context_extensions.dart';
+import 'package:cricheros/components/match_detail_cell.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros/ui/app_route.dart';
+import 'package:cricheros/ui/flow/tournament/detail/components/filter_tab_view.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
 
 import '../../../../../components/action_bottom_sheet.dart';
 import '../../../../../components/empty_screen.dart';

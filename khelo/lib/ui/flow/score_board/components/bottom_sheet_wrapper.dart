@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
-import 'package:style/button/bottom_sticky_overlay.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/widgets/drag_handle.dart';
+import 'package:cricheros_style/button/bottom_sticky_overlay.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/widgets/drag_handle.dart';
 
 class BottomSheetWrapper extends StatelessWidget {
   final Widget content;

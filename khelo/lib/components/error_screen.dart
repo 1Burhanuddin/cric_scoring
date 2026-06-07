@@ -1,8 +1,8 @@
-import 'package:data/errors/app_error.dart';
+import 'package:cricheros_data/errors/app_error.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:khelo/components/place_holder_screen.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
+import 'package:cricheros/components/place_holder_screen.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
 
 import '../gen/assets.gen.dart';
 

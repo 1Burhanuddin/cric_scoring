@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:style/button/action_button.dart';
-import 'package:style/extensions/context_extensions.dart';
+import 'package:cricheros_style/button/action_button.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
 
 Widget moreOptionButton(
   BuildContext context, {

@@ -1,8 +1,8 @@
 import 'dart:io';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:style/text/app_text_style.dart';
-import 'package:style/widgets/custom_cupertino_navigation_bar.dart';
+import 'package:cricheros_style/text/app_text_style.dart';
+import 'package:cricheros_style/widgets/custom_cupertino_navigation_bar.dart';
 
 class AppPage extends StatelessWidget {
   final String? title;

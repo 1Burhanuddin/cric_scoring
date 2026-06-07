@@ -1,6 +1,6 @@
-import 'package:data/api/match/match_model.dart';
-import 'package:data/api/team/team_model.dart';
-import 'package:data/api/user/user_models.dart';
+import 'package:cricheros_data/api/match/match_model.dart';
+import 'package:cricheros_data/api/team/team_model.dart';
+import 'package:cricheros_data/api/user/user_models.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 

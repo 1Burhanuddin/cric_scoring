@@ -1,18 +1,18 @@
 import 'package:collection/collection.dart';
-import 'package:data/api/ball_score/ball_score_model.dart';
-import 'package:data/api/match/match_model.dart';
+import 'package:cricheros_data/api/ball_score/ball_score_model.dart';
+import 'package:cricheros_data/api/match/match_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:khelo/components/action_bottom_sheet.dart';
-import 'package:khelo/components/empty_screen.dart';
-import 'package:khelo/components/error_screen.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:khelo/ui/flow/matches/match_detail/components/commentary_ball_summary.dart';
-import 'package:khelo/ui/flow/matches/match_detail/match_detail_tab_view_model.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/indicator/progress_indicator.dart';
-import 'package:style/widgets/adaptive_outlined_tile.dart';
+import 'package:cricheros/components/action_bottom_sheet.dart';
+import 'package:cricheros/components/empty_screen.dart';
+import 'package:cricheros/components/error_screen.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros/ui/flow/matches/match_detail/components/commentary_ball_summary.dart';
+import 'package:cricheros/ui/flow/matches/match_detail/match_detail_tab_view_model.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/indicator/progress_indicator.dart';
+import 'package:cricheros_style/widgets/adaptive_outlined_tile.dart';
 
 class MatchDetailHighlightView extends ConsumerWidget {
   const MatchDetailHighlightView({super.key});

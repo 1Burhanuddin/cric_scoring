@@ -1,13 +1,13 @@
-import 'package:data/api/match/match_model.dart';
+import 'package:cricheros_data/api/match/match_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:khelo/components/image_avatar.dart';
-import 'package:khelo/components/match_status_tag.dart';
-import 'package:khelo/domain/extensions/string_extensions.dart';
-import 'package:khelo/ui/flow/matches/match_detail/match_detail_tab_view_model.dart';
-import 'package:khelo/components/won_by_message_text.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/text/app_text_style.dart';
+import 'package:cricheros/components/image_avatar.dart';
+import 'package:cricheros/components/match_status_tag.dart';
+import 'package:cricheros/domain/extensions/string_extensions.dart';
+import 'package:cricheros/ui/flow/matches/match_detail/match_detail_tab_view_model.dart';
+import 'package:cricheros/components/won_by_message_text.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/text/app_text_style.dart';
 
 class FinalScoreView extends ConsumerWidget {
   const FinalScoreView({super.key});

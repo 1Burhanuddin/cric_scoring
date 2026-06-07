@@ -1,8 +1,8 @@
 import 'package:flutter/cupertino.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:style/button/primary_button.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/text/app_text_style.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros_style/button/primary_button.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/text/app_text_style.dart';
 
 import '../ui/app_route.dart';
 

@@ -1,14 +1,14 @@
 import 'dart:io';
 
-import 'package:data/storage/app_preferences.dart';
+import 'package:cricheros_data/storage/app_preferences.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/theme/colors.dart';
-import 'package:style/theme/theme.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/theme/colors.dart';
+import 'package:cricheros_style/theme/theme.dart';
 
 import 'app_route.dart';
 

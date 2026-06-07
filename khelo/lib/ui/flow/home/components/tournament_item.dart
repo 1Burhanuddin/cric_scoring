@@ -1,15 +1,15 @@
 import 'package:cached_network_image/cached_network_image.dart';
 
-import 'package:data/api/tournament/tournament_model.dart';
+import 'package:cricheros_data/api/tournament/tournament_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:khelo/domain/extensions/enum_extensions.dart';
-import 'package:khelo/domain/extensions/image_provider_extensions.dart';
-import 'package:khelo/ui/app_route.dart';
+import 'package:cricheros/domain/extensions/enum_extensions.dart';
+import 'package:cricheros/domain/extensions/image_provider_extensions.dart';
+import 'package:cricheros/ui/app_route.dart';
 import 'package:palette_generator/palette_generator.dart';
-import 'package:style/animations/on_tap_scale.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/text/app_text_style.dart';
+import 'package:cricheros_style/animations/on_tap_scale.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/text/app_text_style.dart';
 
 import '../../../../components/match_status_tag.dart';
 import '../../../../domain/formatter/date_formatter.dart';

@@ -1,10 +1,10 @@
 import 'dart:io';
 
-import 'package:data/api/user/user_models.dart';
-import 'package:data/service/auth/auth_service.dart';
-import 'package:data/service/device/device_service.dart';
-import 'package:data/service/user/user_service.dart';
-import 'package:data/storage/app_preferences.dart';
+import 'package:cricheros_data/api/user/user_models.dart';
+import 'package:cricheros_data/service/auth/auth_service.dart';
+import 'package:cricheros_data/service/device/device_service.dart';
+import 'package:cricheros_data/service/user/user_service.dart';
+import 'package:cricheros_data/storage/app_preferences.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';

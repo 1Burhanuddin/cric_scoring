@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:khelo/domain/extensions/enum_extensions.dart';
-import 'package:khelo/ui/flow/matches/add_match/add_match_view_model.dart';
-import 'package:khelo/ui/flow/matches/add_match/components/section_title.dart';
-import 'package:style/button/chip_button.dart';
-import 'package:data/api/match/match_model.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros/domain/extensions/enum_extensions.dart';
+import 'package:cricheros/ui/flow/matches/add_match/add_match_view_model.dart';
+import 'package:cricheros/ui/flow/matches/add_match/components/section_title.dart';
+import 'package:cricheros_style/button/chip_button.dart';
+import 'package:cricheros_data/api/match/match_model.dart';
 
 class PitchSelectionView extends StatelessWidget {
   final AddMatchViewNotifier notifier;

@@ -1,15 +1,15 @@
 import 'dart:async';
 import 'dart:collection';
 
-import 'package:data/api/match/match_model.dart';
-import 'package:data/api/tournament/tournament_model.dart';
-import 'package:data/extensions/string_extensions.dart';
-import 'package:data/service/match/match_service.dart';
-import 'package:data/service/tournament/tournament_service.dart';
+import 'package:cricheros_data/api/match/match_model.dart';
+import 'package:cricheros_data/api/tournament/tournament_model.dart';
+import 'package:cricheros_data/extensions/string_extensions.dart';
+import 'package:cricheros_data/service/match/match_service.dart';
+import 'package:cricheros_data/service/tournament/tournament_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:khelo/ui/flow/tournament/match_selection/match_scheduler.dart';
+import 'package:cricheros/ui/flow/tournament/match_selection/match_scheduler.dart';
 
 part 'match_selection_view_model.freezed.dart';
 

@@ -1,16 +1,16 @@
-import 'package:data/api/match/match_model.dart';
-import 'package:data/api/tournament/tournament_model.dart';
-import 'package:data/api/user/user_models.dart';
+import 'package:cricheros_data/api/match/match_model.dart';
+import 'package:cricheros_data/api/tournament/tournament_model.dart';
+import 'package:cricheros_data/api/user/user_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:khelo/domain/extensions/enum_extensions.dart';
-import 'package:style/animations/on_tap_scale.dart';
-import 'package:style/button/chip_button.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/text/app_text_style.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros/domain/extensions/enum_extensions.dart';
+import 'package:cricheros_style/animations/on_tap_scale.dart';
+import 'package:cricheros_style/button/chip_button.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/text/app_text_style.dart';
 
 import '../../../../../components/empty_screen.dart';
 import '../../../../../components/image_avatar.dart';

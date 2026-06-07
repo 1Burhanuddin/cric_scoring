@@ -1,9 +1,9 @@
 import 'dart:async';
 
-import 'package:data/api/user/user_models.dart';
-import 'package:data/service/auth/auth_service.dart';
-import 'package:data/storage/app_preferences.dart';
-import 'package:data/storage/provider/preferences_provider.dart';
+import 'package:cricheros_data/api/user/user_models.dart';
+import 'package:cricheros_data/service/auth/auth_service.dart';
+import 'package:cricheros_data/storage/app_preferences.dart';
+import 'package:cricheros_data/storage/provider/preferences_provider.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

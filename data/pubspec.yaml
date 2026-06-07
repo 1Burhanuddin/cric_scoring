@@ -1,5 +1,5 @@
-name: data
-description: "A new Flutter project."
+name: cricheros_data
+description: "CricHeros data layer - models, repositories and Firebase services."
 version: 0.0.1
 publish_to: 'none'
 

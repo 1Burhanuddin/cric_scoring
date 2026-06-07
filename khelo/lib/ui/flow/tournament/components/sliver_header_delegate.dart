@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:style/extensions/context_extensions.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
 
 class SliverPersistentDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;

@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:style/extensions/date_extensions.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros_style/extensions/date_extensions.dart';
 
 enum DateFormatType {
   dateAndTime,

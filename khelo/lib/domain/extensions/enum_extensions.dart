@@ -1,11 +1,11 @@
-import 'package:data/api/ball_score/ball_score_model.dart';
-import 'package:data/api/leaderboard/leaderboard_model.dart';
-import 'package:data/api/match/match_model.dart';
-import 'package:data/api/tournament/tournament_model.dart';
-import 'package:data/api/user/user_models.dart';
+import 'package:cricheros_data/api/ball_score/ball_score_model.dart';
+import 'package:cricheros_data/api/leaderboard/leaderboard_model.dart';
+import 'package:cricheros_data/api/match/match_model.dart';
+import 'package:cricheros_data/api/tournament/tournament_model.dart';
+import 'package:cricheros_data/api/user/user_models.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:style/extensions/context_extensions.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
 
 extension BallTypeString on BallType {
   String getString(BuildContext context) {

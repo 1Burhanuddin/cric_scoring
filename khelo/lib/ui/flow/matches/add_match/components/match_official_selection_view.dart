@@ -1,12 +1,12 @@
 import 'package:collection/collection.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:khelo/ui/app_route.dart';
-import 'package:khelo/ui/flow/matches/add_match/add_match_view_model.dart';
-import 'package:khelo/ui/flow/matches/add_match/components/section_title.dart';
-import 'package:khelo/ui/flow/matches/add_match/match_officials/add_match_officials_view_model.dart';
-import 'package:khelo/ui/flow/matches/add_match/match_officials/components/officials_cell_view.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros/ui/app_route.dart';
+import 'package:cricheros/ui/flow/matches/add_match/add_match_view_model.dart';
+import 'package:cricheros/ui/flow/matches/add_match/components/section_title.dart';
+import 'package:cricheros/ui/flow/matches/add_match/match_officials/add_match_officials_view_model.dart';
+import 'package:cricheros/ui/flow/matches/add_match/match_officials/components/officials_cell_view.dart';
 
 class MatchOfficialSelectionView extends StatelessWidget {
   final AddMatchViewNotifier notifier;

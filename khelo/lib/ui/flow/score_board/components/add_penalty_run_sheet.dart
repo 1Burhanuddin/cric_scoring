@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:khelo/domain/extensions/string_extensions.dart';
-import 'package:khelo/ui/flow/score_board/components/bottom_sheet_wrapper.dart';
-import 'package:khelo/ui/flow/score_board/components/user_cell_view.dart';
-import 'package:khelo/ui/flow/score_board/score_board_view_model.dart';
-import 'package:style/button/primary_button.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/text/app_text_field.dart';
-import 'package:style/text/app_text_style.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros/domain/extensions/string_extensions.dart';
+import 'package:cricheros/ui/flow/score_board/components/bottom_sheet_wrapper.dart';
+import 'package:cricheros/ui/flow/score_board/components/user_cell_view.dart';
+import 'package:cricheros/ui/flow/score_board/score_board_view_model.dart';
+import 'package:cricheros_style/button/primary_button.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/text/app_text_field.dart';
+import 'package:cricheros_style/text/app_text_style.dart';
 
 class AddPenaltyRunSheet extends ConsumerStatefulWidget {
   static Future<T?> show<T>(BuildContext context) {

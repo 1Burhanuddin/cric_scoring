@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:khelo/domain/extensions/app_error_extension.dart';
+import 'package:cricheros/domain/extensions/app_error_extension.dart';
 
 void showErrorSnackBar({
   required BuildContext context,

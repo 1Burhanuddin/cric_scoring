@@ -1,5 +1,5 @@
-name: khelo
-description: "A new Flutter project."
+name: cricheros
+description: "CricHeros - a cricket scoring and tournament management app."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.1+5
+version: 1.0.0+1
 
 environment:
   sdk: '>=3.2.3 <4.0.0'
@@ -34,9 +34,9 @@ dependencies:
     sdk: flutter
   intl: ^0.19.0
 
-  style:
+  cricheros_style:
     path: ../style
-  data:
+  cricheros_data:
     path: ../data
 
   shared_preferences: ^2.3.2

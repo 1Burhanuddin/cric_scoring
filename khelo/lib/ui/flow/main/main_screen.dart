@@ -1,19 +1,19 @@
 import 'dart:io';
 
-import 'package:data/service/device/device_service.dart';
+import 'package:cricheros_data/service/device/device_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/svg.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:khelo/gen/assets.gen.dart';
-import 'package:khelo/ui/flow/app_links/app_links_handler.dart';
-import 'package:khelo/ui/flow/my_game/my_game_tab_screen.dart';
-import 'package:khelo/ui/flow/profile/profile_screen.dart';
-import 'package:khelo/ui/flow/stats/user_stat/user_stat_screen.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros/gen/assets.gen.dart';
+import 'package:cricheros/ui/flow/app_links/app_links_handler.dart';
+import 'package:cricheros/ui/flow/my_game/my_game_tab_screen.dart';
+import 'package:cricheros/ui/flow/profile/profile_screen.dart';
+import 'package:cricheros/ui/flow/stats/user_stat/user_stat_screen.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/navigation/bottom_navigation_bar.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/navigation/bottom_navigation_bar.dart';
 
 import '../../../domain/extensions/widget_extension.dart';
 import '../home/home_screen.dart';

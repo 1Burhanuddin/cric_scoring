@@ -1,7 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:style/extensions/context_extensions.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
 
 class CustomCupertinoNavigationBar extends StatelessWidget
     implements ObstructingPreferredSizeWidget {

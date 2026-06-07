@@ -1,5 +1,5 @@
 import 'package:flutter/cupertino.dart';
-import 'package:style/extensions/context_extensions.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
 
 Widget dragHandle(BuildContext context) {
   return Align(

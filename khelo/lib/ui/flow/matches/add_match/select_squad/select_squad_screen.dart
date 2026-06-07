@@ -1,21 +1,21 @@
-import 'package:data/api/match/match_model.dart';
-import 'package:data/api/team/team_model.dart';
-import 'package:data/api/user/user_models.dart';
+import 'package:cricheros_data/api/match/match_model.dart';
+import 'package:cricheros_data/api/team/team_model.dart';
+import 'package:cricheros_data/api/user/user_models.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:khelo/components/app_page.dart';
-import 'package:khelo/components/user_detail_cell.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:khelo/domain/extensions/widget_extension.dart';
-import 'package:khelo/gen/assets.gen.dart';
-import 'package:khelo/ui/flow/matches/add_match/select_squad/components/select_admin_and_captain_dialog.dart';
-import 'package:khelo/ui/flow/matches/add_match/select_squad/components/user_detail_sheet.dart';
-import 'package:khelo/ui/flow/matches/add_match/select_squad/select_squad_view_model.dart';
-import 'package:style/button/action_button.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/text/app_text_style.dart';
+import 'package:cricheros/components/app_page.dart';
+import 'package:cricheros/components/user_detail_cell.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros/domain/extensions/widget_extension.dart';
+import 'package:cricheros/gen/assets.gen.dart';
+import 'package:cricheros/ui/flow/matches/add_match/select_squad/components/select_admin_and_captain_dialog.dart';
+import 'package:cricheros/ui/flow/matches/add_match/select_squad/components/user_detail_sheet.dart';
+import 'package:cricheros/ui/flow/matches/add_match/select_squad/select_squad_view_model.dart';
+import 'package:cricheros_style/button/action_button.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/text/app_text_style.dart';
 
 class SelectSquadScreen extends ConsumerStatefulWidget {
   final TeamModel team;

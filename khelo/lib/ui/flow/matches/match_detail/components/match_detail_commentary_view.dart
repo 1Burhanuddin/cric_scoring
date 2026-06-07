@@ -1,19 +1,19 @@
 import 'package:collection/collection.dart';
-import 'package:data/api/ball_score/ball_score_model.dart';
-import 'package:data/api/team/team_model.dart';
+import 'package:cricheros_data/api/ball_score/ball_score_model.dart';
+import 'package:cricheros_data/api/team/team_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:khelo/components/empty_screen.dart';
-import 'package:khelo/components/error_screen.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:khelo/ui/flow/matches/match_detail/components/commentary_ball_summary.dart';
-import 'package:khelo/ui/flow/matches/match_detail/components/commentary_over_overview.dart';
-import 'package:khelo/ui/flow/matches/match_detail/components/final_score_view.dart';
-import 'package:khelo/ui/flow/matches/match_detail/match_detail_tab_view_model.dart';
-import 'package:style/callback/on_visible_callback.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/indicator/progress_indicator.dart';
-import 'package:style/text/app_text_style.dart';
+import 'package:cricheros/components/empty_screen.dart';
+import 'package:cricheros/components/error_screen.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros/ui/flow/matches/match_detail/components/commentary_ball_summary.dart';
+import 'package:cricheros/ui/flow/matches/match_detail/components/commentary_over_overview.dart';
+import 'package:cricheros/ui/flow/matches/match_detail/components/final_score_view.dart';
+import 'package:cricheros/ui/flow/matches/match_detail/match_detail_tab_view_model.dart';
+import 'package:cricheros_style/callback/on_visible_callback.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/indicator/progress_indicator.dart';
+import 'package:cricheros_style/text/app_text_style.dart';
 
 import '../../../../../domain/extensions/widget_extension.dart';
 

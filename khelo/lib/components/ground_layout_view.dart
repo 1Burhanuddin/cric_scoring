@@ -1,8 +1,8 @@
 import 'dart:math';
-import 'package:data/api/ball_score/ball_score_model.dart';
+import 'package:cricheros_data/api/ball_score/ball_score_model.dart';
 import 'package:flutter/material.dart';
-import 'package:khelo/components/custom_painters.dart';
-import 'package:style/extensions/context_extensions.dart';
+import 'package:cricheros/components/custom_painters.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
 
 class GroundLayoutView extends StatefulWidget {
   final Function(FieldingPosition) onPositionSelect;

@@ -1,7 +1,7 @@
 import 'dart:async';
-import 'package:data/errors/app_error.dart';
-import 'package:data/errors/app_error_l10n_codes.dart';
-import 'package:data/service/auth/auth_service.dart';
+import 'package:cricheros_data/errors/app_error.dart';
+import 'package:cricheros_data/errors/app_error_l10n_codes.dart';
+import 'package:cricheros_data/service/auth/auth_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';

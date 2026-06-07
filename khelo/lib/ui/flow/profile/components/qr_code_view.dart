@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:khelo/components/app_page.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
+import 'package:cricheros/components/app_page.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'package:style/button/action_button.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/text/app_text_style.dart';
+import 'package:cricheros_style/button/action_button.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/text/app_text_style.dart';
 
 class QrCodeView extends StatelessWidget {
   final String id;

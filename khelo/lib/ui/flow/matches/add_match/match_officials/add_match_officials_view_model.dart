@@ -1,10 +1,10 @@
-import 'package:data/api/user/user_models.dart';
+import 'package:cricheros_data/api/user/user_models.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:data/extensions/list_extensions.dart';
-import 'package:khelo/gen/assets.gen.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros_data/extensions/list_extensions.dart';
+import 'package:cricheros/gen/assets.gen.dart';
 
 part 'add_match_officials_view_model.freezed.dart';
 

@@ -1,17 +1,17 @@
-import 'package:data/api/match/match_model.dart';
+import 'package:cricheros_data/api/match/match_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:khelo/components/image_avatar.dart';
-import 'package:khelo/components/match_status_tag.dart';
-import 'package:khelo/components/tournament_badge.dart';
-import 'package:khelo/components/won_by_message_text.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:khelo/domain/extensions/enum_extensions.dart';
-import 'package:khelo/domain/formatter/date_formatter.dart';
-import 'package:khelo/gen/assets.gen.dart';
-import 'package:style/animations/on_tap_scale.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/text/app_text_style.dart';
+import 'package:cricheros/components/image_avatar.dart';
+import 'package:cricheros/components/match_status_tag.dart';
+import 'package:cricheros/components/tournament_badge.dart';
+import 'package:cricheros/components/won_by_message_text.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros/domain/extensions/enum_extensions.dart';
+import 'package:cricheros/domain/formatter/date_formatter.dart';
+import 'package:cricheros/gen/assets.gen.dart';
+import 'package:cricheros_style/animations/on_tap_scale.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/text/app_text_style.dart';
 
 class MatchDetailCell extends StatelessWidget {
   final MatchModel match;

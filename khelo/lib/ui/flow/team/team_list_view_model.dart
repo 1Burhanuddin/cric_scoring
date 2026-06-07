@@ -1,12 +1,12 @@
 import 'dart:async';
 
-import 'package:data/api/team/team_model.dart';
-import 'package:data/service/team/team_service.dart';
-import 'package:data/storage/app_preferences.dart';
+import 'package:cricheros_data/api/team/team_model.dart';
+import 'package:cricheros_data/service/team/team_service.dart';
+import 'package:cricheros_data/storage/app_preferences.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
 
 part 'team_list_view_model.freezed.dart';
 

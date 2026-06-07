@@ -1,18 +1,18 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:data/api/team/team_model.dart';
-import 'package:data/api/user/user_models.dart';
-import 'package:data/errors/app_error.dart';
-import 'package:data/extensions/string_extensions.dart';
-import 'package:data/service/file_upload/file_upload_service.dart';
-import 'package:data/service/team/team_service.dart';
-import 'package:data/storage/app_preferences.dart';
-import 'package:data/utils/constant/firebase_storage_constant.dart';
+import 'package:cricheros_data/api/team/team_model.dart';
+import 'package:cricheros_data/api/user/user_models.dart';
+import 'package:cricheros_data/errors/app_error.dart';
+import 'package:cricheros_data/extensions/string_extensions.dart';
+import 'package:cricheros_data/service/file_upload/file_upload_service.dart';
+import 'package:cricheros_data/service/team/team_service.dart';
+import 'package:cricheros_data/storage/app_preferences.dart';
+import 'package:cricheros_data/utils/constant/firebase_storage_constant.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:khelo/domain/extensions/file_extension.dart';
+import 'package:cricheros/domain/extensions/file_extension.dart';
 
 part 'add_team_view_model.freezed.dart';
 

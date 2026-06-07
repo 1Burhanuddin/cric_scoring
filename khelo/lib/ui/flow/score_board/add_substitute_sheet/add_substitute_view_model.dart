@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:data/api/user/user_models.dart';
-import 'package:data/service/user/user_service.dart';
+import 'package:cricheros_data/api/user/user_models.dart';
+import 'package:cricheros_data/service/user/user_service.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';

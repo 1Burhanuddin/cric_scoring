@@ -1,14 +1,14 @@
-import 'package:data/api/match/match_model.dart';
-import 'package:data/api/team/team_model.dart';
+import 'package:cricheros_data/api/match/match_model.dart';
+import 'package:cricheros_data/api/team/team_model.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:khelo/components/empty_screen.dart';
-import 'package:khelo/components/match_detail_cell.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:khelo/ui/app_route.dart';
-import 'package:khelo/ui/flow/team/detail/team_detail_view_model.dart';
-import 'package:style/callback/on_visible_callback.dart';
-import 'package:style/indicator/progress_indicator.dart';
+import 'package:cricheros/components/empty_screen.dart';
+import 'package:cricheros/components/match_detail_cell.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros/ui/app_route.dart';
+import 'package:cricheros/ui/flow/team/detail/team_detail_view_model.dart';
+import 'package:cricheros_style/callback/on_visible_callback.dart';
+import 'package:cricheros_style/indicator/progress_indicator.dart';
 
 import '../../../../../domain/extensions/widget_extension.dart';
 

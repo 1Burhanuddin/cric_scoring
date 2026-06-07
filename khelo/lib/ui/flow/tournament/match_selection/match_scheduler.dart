@@ -1,10 +1,10 @@
 import 'package:collection/collection.dart';
-import 'package:data/api/match/match_model.dart';
-import 'package:data/api/team/team_model.dart';
-import 'package:data/api/tournament/tournament_model.dart';
-import 'package:data/extensions/double_extensions.dart';
-import 'package:data/extensions/list_extensions.dart';
-import 'package:data/utils/grouping_utils.dart';
+import 'package:cricheros_data/api/match/match_model.dart';
+import 'package:cricheros_data/api/team/team_model.dart';
+import 'package:cricheros_data/api/tournament/tournament_model.dart';
+import 'package:cricheros_data/extensions/double_extensions.dart';
+import 'package:cricheros_data/extensions/list_extensions.dart';
+import 'package:cricheros_data/utils/grouping_utils.dart';
 
 import 'match_selection_view_model.dart';
 

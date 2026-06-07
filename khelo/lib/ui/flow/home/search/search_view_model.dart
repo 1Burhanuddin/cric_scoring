@@ -1,13 +1,13 @@
 import 'dart:async';
 
-import 'package:data/api/match/match_model.dart';
-import 'package:data/api/team/team_model.dart';
-import 'package:data/api/tournament/tournament_model.dart';
-import 'package:data/api/user/user_models.dart';
-import 'package:data/service/match/match_service.dart';
-import 'package:data/service/team/team_service.dart';
-import 'package:data/service/tournament/tournament_service.dart';
-import 'package:data/service/user/user_service.dart';
+import 'package:cricheros_data/api/match/match_model.dart';
+import 'package:cricheros_data/api/team/team_model.dart';
+import 'package:cricheros_data/api/tournament/tournament_model.dart';
+import 'package:cricheros_data/api/user/user_models.dart';
+import 'package:cricheros_data/service/match/match_service.dart';
+import 'package:cricheros_data/service/team/team_service.dart';
+import 'package:cricheros_data/service/tournament/tournament_service.dart';
+import 'package:cricheros_data/service/user/user_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';

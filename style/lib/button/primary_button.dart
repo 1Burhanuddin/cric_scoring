@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:style/animations/on_tap_scale.dart';
-import 'package:style/indicator/progress_indicator.dart';
+import 'package:cricheros_style/animations/on_tap_scale.dart';
+import 'package:cricheros_style/indicator/progress_indicator.dart';
 
 import '../text/app_text_style.dart';
 import '../theme/colors.dart';

@@ -1,18 +1,18 @@
-import 'package:data/storage/app_preferences.dart';
+import 'package:cricheros_data/storage/app_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:khelo/components/app_page.dart';
-import 'package:khelo/components/country_code_view.dart';
-import 'package:khelo/components/error_snackbar.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:khelo/ui/app_route.dart';
-import 'package:khelo/ui/flow/sign_in/sign_in_with_phone/sign_in_with_phone_view_model.dart';
-import 'package:style/button/bottom_sticky_overlay.dart';
-import 'package:style/button/primary_button.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/text/app_text_field.dart';
-import 'package:style/text/app_text_style.dart';
+import 'package:cricheros/components/app_page.dart';
+import 'package:cricheros/components/country_code_view.dart';
+import 'package:cricheros/components/error_snackbar.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros/ui/app_route.dart';
+import 'package:cricheros/ui/flow/sign_in/sign_in_with_phone/sign_in_with_phone_view_model.dart';
+import 'package:cricheros_style/button/bottom_sticky_overlay.dart';
+import 'package:cricheros_style/button/primary_button.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/text/app_text_field.dart';
+import 'package:cricheros_style/text/app_text_style.dart';
 
 class SignInWithPhoneScreen extends ConsumerWidget {
   const SignInWithPhoneScreen({super.key});

@@ -1,10 +1,10 @@
-import 'package:data/api/match/match_model.dart';
+import 'package:cricheros_data/api/match/match_model.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:khelo/domain/extensions/context_extensions.dart';
-import 'package:khelo/domain/extensions/enum_extensions.dart';
-import 'package:khelo/domain/extensions/string_extensions.dart';
-import 'package:style/extensions/context_extensions.dart';
-import 'package:style/text/app_text_style.dart';
+import 'package:cricheros/domain/extensions/context_extensions.dart';
+import 'package:cricheros/domain/extensions/enum_extensions.dart';
+import 'package:cricheros/domain/extensions/string_extensions.dart';
+import 'package:cricheros_style/extensions/context_extensions.dart';
+import 'package:cricheros_style/text/app_text_style.dart';
 
 class WonByMessageText extends StatelessWidget {
   final MatchResult? matchResult;
