@@ -44,6 +44,7 @@ class AppTextStyle {
     fontWeight: FontWeight.w500,
     fontSize: 18,
     height: 1.3,
+    letterSpacing: -0.36,
     package: 'style',
   );
 
@@ -70,6 +71,7 @@ class AppTextStyle {
     fontWeight: FontWeight.normal,
     fontSize: 15,
     height: 1.5,
+    letterSpacing: -0.24,
     package: 'style',
   );
 
@@ -78,6 +80,7 @@ class AppTextStyle {
     fontWeight: FontWeight.w500,
     fontSize: 14,
     height: 1.5,
+    letterSpacing: -0.2,
     package: 'style',
   );
 
@@ -86,6 +89,7 @@ class AppTextStyle {
     fontWeight: FontWeight.w600,
     fontSize: 14,
     height: 1.5,
+    letterSpacing: -0.2,
     package: 'style',
   );
 
@@ -94,6 +98,7 @@ class AppTextStyle {
     fontWeight: FontWeight.w500,
     fontSize: 13,
     height: 1.5,
+    letterSpacing: -0.15,
     package: 'style',
   );
 }

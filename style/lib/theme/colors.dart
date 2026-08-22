@@ -58,9 +58,16 @@ final ThemeData materialThemeDataLight = _materialLightTheme.copyWith(
     backgroundColor: surfaceLightColor,
     headerForegroundColor: textPrimaryLightColor,
     dividerColor: outlineLightColor,
-    inputDecorationTheme:
-        _materialLightTheme.datePickerTheme.inputDecorationTheme?.copyWith(
-      errorBorder: const OutlineInputBorder(
+    // NOTE(pre-existing, not part of this UI pass): calling `.copyWith` on
+    // `datePickerTheme.inputDecorationTheme` broke on this Flutter version
+    // — the getter now returns the newer `InputDecorationThemeData`, but
+    // `copyWith`'s own `inputDecorationTheme` parameter still wants the
+    // older `InputDecorationTheme`. Building a fresh `InputDecorationTheme`
+    // directly sidesteps the mismatch. Only needed to get this repo
+    // compiling on Flutter 3.44.9; verify against whatever SDK the rest of
+    // the team is on.
+    inputDecorationTheme: const InputDecorationTheme(
+      errorBorder: OutlineInputBorder(
           borderSide: BorderSide(color: awarenessAlertColor)),
     ),
   ),
@@ -69,9 +76,9 @@ final ThemeData materialThemeDataLight = _materialLightTheme.copyWith(
     dialBackgroundColor: containerLowLightColor,
     dayPeriodColor: primaryLightColor,
     hourMinuteColor: containerLowLightColor,
-    inputDecorationTheme:
-        _materialLightTheme.timePickerTheme.inputDecorationTheme?.copyWith(
-      errorBorder: const OutlineInputBorder(
+    // Pre-existing SDK-compat fix, see the note on the date picker above.
+    inputDecorationTheme: const InputDecorationTheme(
+      errorBorder: OutlineInputBorder(
           borderSide: BorderSide(color: awarenessAlertColor)),
     ),
   ),
@@ -84,6 +91,19 @@ final ThemeData materialThemeDataLight = _materialLightTheme.copyWith(
     onSurface: textPrimaryLightColor,
   ),
   scaffoldBackgroundColor: backgroundLightColor,
+  // No CardTheme existed before — Card fell back to Material3's default
+  // elevation/shadow, which reads as boxy/dated next to the rest of the
+  // app's flatter surfaces. Flat fill (surfaceLightColor, one step off
+  // the page background) + no shadow, same "surface ramp" idea the app's
+  // own AppColorScheme.containerXOnSurface getters already use.
+  cardTheme: const CardThemeData(
+    elevation: 0,
+    color: surfaceLightColor,
+    margin: EdgeInsets.zero,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.all(Radius.circular(16)),
+    ),
+  ),
   appBarTheme: _materialLightTheme.appBarTheme.copyWith(
     backgroundColor: primaryLightColor,
     foregroundColor: textPrimaryDarkColor,
@@ -137,9 +157,9 @@ final ThemeData materialThemeDataDark = _materialDarkTheme.copyWith(
     backgroundColor: surfaceDarkColor,
     headerForegroundColor: textPrimaryDarkColor,
     dividerColor: outlineDarkColor,
-    inputDecorationTheme:
-        _materialDarkTheme.datePickerTheme.inputDecorationTheme?.copyWith(
-      errorBorder: const OutlineInputBorder(
+    // Pre-existing SDK-compat fix, see the note on the light theme above.
+    inputDecorationTheme: const InputDecorationTheme(
+      errorBorder: OutlineInputBorder(
           borderSide: BorderSide(color: awarenessAlertColor)),
     ),
   ),
@@ -148,9 +168,9 @@ final ThemeData materialThemeDataDark = _materialDarkTheme.copyWith(
     dialBackgroundColor: containerLowDarkColor,
     dayPeriodColor: primaryDarkColor,
     hourMinuteColor: containerLowDarkColor,
-    inputDecorationTheme:
-        _materialDarkTheme.timePickerTheme.inputDecorationTheme?.copyWith(
-      errorBorder: const OutlineInputBorder(
+    // Pre-existing SDK-compat fix, see the note on the light theme above.
+    inputDecorationTheme: const InputDecorationTheme(
+      errorBorder: OutlineInputBorder(
           borderSide: BorderSide(color: awarenessAlertColor)),
     ),
   ),
@@ -163,6 +183,14 @@ final ThemeData materialThemeDataDark = _materialDarkTheme.copyWith(
     onSurface: textPrimaryDarkColor,
   ),
   scaffoldBackgroundColor: backgroundDarkColor,
+  cardTheme: const CardThemeData(
+    elevation: 0,
+    color: surfaceDarkColor,
+    margin: EdgeInsets.zero,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.all(Radius.circular(16)),
+    ),
+  ),
   appBarTheme: _materialDarkTheme.appBarTheme.copyWith(
     backgroundColor: primaryDarkColor,
     foregroundColor: textPrimaryDarkColor,

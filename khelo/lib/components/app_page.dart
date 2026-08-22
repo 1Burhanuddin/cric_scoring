@@ -77,11 +77,14 @@ class AppPage extends StatelessWidget {
         ),
       );
 
-  Widget _material() => Scaffold(
+  Widget _material() {
+    final showAppBar = !((title == null && titleWidget == null) &&
+        actions == null &&
+        leading == null);
+    return Builder(
+      builder: (context) => Scaffold(
         resizeToAvoidBottomInset: resizeToAvoidBottomInset,
-        appBar: (title == null && titleWidget == null) &&
-                actions == null &&
-                leading == null
+        appBar: !showAppBar
             ? null
             : AppBar(
                 backgroundColor: appBarBackgroundColor,
@@ -91,12 +94,31 @@ class AppPage extends StatelessWidget {
                         padding ?? const EdgeInsets.symmetric(horizontal: 8),
                     child: titleWidget ?? _title()),
                 actions: actions,
-                leading: leading,
+                // Flutter's own auto-generated leading (when this stays
+                // null with automaticallyImplyLeading:true) is the
+                // Android-style full arrow — swapped for the same iOS
+                // chevron the Cupertino branch above already uses, so
+                // back buttons look the same on both platforms.
+                leading: leading ?? _autoBackLeading(context),
                 automaticallyImplyLeading: automaticallyImplyLeading,
               ),
         body: body,
         floatingActionButton: floatingActionButton,
-      );
+      ),
+    );
+  }
+
+  Widget? _autoBackLeading(BuildContext context) {
+    if (!automaticallyImplyLeading) return null;
+    final canPop =
+        ModalRoute.of(context)?.canPop ?? Navigator.of(context).canPop();
+    if (!canPop) return null;
+    return IconButton(
+      icon: const Icon(CupertinoIcons.back, size: 22),
+      tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+      onPressed: () => Navigator.of(context).maybePop(),
+    );
+  }
 
   Widget _title() => Text(
         title ?? '',
