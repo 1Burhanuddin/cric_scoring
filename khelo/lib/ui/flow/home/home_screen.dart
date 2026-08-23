@@ -402,7 +402,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             CircleAvatar(
-              backgroundColor: context.colorScheme.containerLow,
+              // Was the exact same fill as this row's own pill background
+              // (containerLow), so the badge circle was invisible — just a
+              // floating "+" with nothing behind it. Accent-tinted instead,
+              // matching the identity-badge treatment used elsewhere (e.g.
+              // the profile header avatar).
+              backgroundColor: context.colorScheme.primary.withValues(alpha: 0.15),
               child: Icon(Icons.add, color: context.colorScheme.primary),
             ),
             const SizedBox(width: 16),
