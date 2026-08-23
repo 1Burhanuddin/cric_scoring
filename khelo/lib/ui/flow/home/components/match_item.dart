@@ -29,7 +29,6 @@ class MatchItem extends StatelessWidget {
           margin: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             color: context.colorScheme.containerLow,
-            border: Border.all(color: context.colorScheme.outline),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(

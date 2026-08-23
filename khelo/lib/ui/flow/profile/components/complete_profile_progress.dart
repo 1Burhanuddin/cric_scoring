@@ -35,7 +35,7 @@ class _CompleteProfileProgressState
         padding: const EdgeInsets.all(16),
         margin: const EdgeInsets.only(top: 24),
         decoration: BoxDecoration(
-          border: Border.all(color: context.colorScheme.outline),
+          color: context.colorScheme.containerLow,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(

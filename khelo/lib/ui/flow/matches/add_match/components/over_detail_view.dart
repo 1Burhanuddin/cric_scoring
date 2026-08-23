@@ -24,8 +24,8 @@ class OverDetailView extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       margin: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: context.colorScheme.outline)),
+          color: context.colorScheme.containerLow,
+          borderRadius: BorderRadius.circular(16)),
       child: Column(
         children: [
           _detailCellView(context,

@@ -77,7 +77,7 @@ class TeamDetailStatContent extends ConsumerWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-          border: Border.all(color: context.colorScheme.outline),
+          color: context.colorScheme.containerLow,
           borderRadius: BorderRadius.circular(16)),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,

@@ -41,7 +41,6 @@ class MatchDetailCell extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: backgroundColor ?? context.colorScheme.containerLow,
-          border: Border.all(color: context.colorScheme.outline),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(
