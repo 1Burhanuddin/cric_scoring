@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:cricheros_data/api/team/team_model.dart';
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -252,7 +253,7 @@ class _TournamentDetailScreenState
           backgroundColor:
               context.colorScheme.containerHighOnSurface.withValues(alpha: 0.4),
           child: Icon(
-            Platform.isIOS ? Icons.arrow_back_ios_new : Icons.arrow_back,
+            CupertinoIcons.back,
             size: 20,
             color: context.colorScheme.textPrimary,
           ),
