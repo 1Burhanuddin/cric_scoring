@@ -38,10 +38,14 @@ const outlineLightColor = Color(0x14000000);
 const outlineDarkColor = Color(0x1FFFFFFF);
 
 const backgroundLightColor = Color(0xFFF5F5F5);
-const backgroundDarkColor = Color(0xFF1A1A2E);
+// True near-black + flat gray surface ramp (matches the reference app's
+// #000000 / #1C1C1E dark theme) rather than the previous navy-tinted dark
+// (#1A1A2E / #16213E) — brand red/teal accents are unchanged, this only
+// moves the neutral background/surface tones.
+const backgroundDarkColor = Color(0xFF000000);
 
 const surfaceLightColor = Color(0xFFFFFFFF);
-const surfaceDarkColor = Color(0xFF16213E);
+const surfaceDarkColor = Color(0xFF1C1C1E);
 
 const awarenessAlertColor = Color(0xFFC62828);
 const awarenessPositiveColor = Color(0xFF4CAF50);
@@ -58,9 +62,11 @@ final ThemeData materialThemeDataLight = _materialLightTheme.copyWith(
     backgroundColor: surfaceLightColor,
     headerForegroundColor: textPrimaryLightColor,
     dividerColor: outlineLightColor,
-    inputDecorationTheme:
-        _materialLightTheme.datePickerTheme.inputDecorationTheme?.copyWith(
-      errorBorder: const OutlineInputBorder(
+    // DatePickerThemeData.copyWith still takes the legacy InputDecorationTheme
+    // type even though its own getter now returns InputDecorationThemeData, so
+    // this can't chain off that getter's .copyWith - build a fresh one instead.
+    inputDecorationTheme: const InputDecorationTheme(
+      errorBorder: OutlineInputBorder(
           borderSide: BorderSide(color: awarenessAlertColor)),
     ),
   ),
@@ -69,9 +75,8 @@ final ThemeData materialThemeDataLight = _materialLightTheme.copyWith(
     dialBackgroundColor: containerLowLightColor,
     dayPeriodColor: primaryLightColor,
     hourMinuteColor: containerLowLightColor,
-    inputDecorationTheme:
-        _materialLightTheme.timePickerTheme.inputDecorationTheme?.copyWith(
-      errorBorder: const OutlineInputBorder(
+    inputDecorationTheme: const InputDecorationTheme(
+      errorBorder: OutlineInputBorder(
           borderSide: BorderSide(color: awarenessAlertColor)),
     ),
   ),
@@ -137,9 +142,8 @@ final ThemeData materialThemeDataDark = _materialDarkTheme.copyWith(
     backgroundColor: surfaceDarkColor,
     headerForegroundColor: textPrimaryDarkColor,
     dividerColor: outlineDarkColor,
-    inputDecorationTheme:
-        _materialDarkTheme.datePickerTheme.inputDecorationTheme?.copyWith(
-      errorBorder: const OutlineInputBorder(
+    inputDecorationTheme: const InputDecorationTheme(
+      errorBorder: OutlineInputBorder(
           borderSide: BorderSide(color: awarenessAlertColor)),
     ),
   ),
@@ -148,9 +152,8 @@ final ThemeData materialThemeDataDark = _materialDarkTheme.copyWith(
     dialBackgroundColor: containerLowDarkColor,
     dayPeriodColor: primaryDarkColor,
     hourMinuteColor: containerLowDarkColor,
-    inputDecorationTheme:
-        _materialDarkTheme.timePickerTheme.inputDecorationTheme?.copyWith(
-      errorBorder: const OutlineInputBorder(
+    inputDecorationTheme: const InputDecorationTheme(
+      errorBorder: OutlineInputBorder(
           borderSide: BorderSide(color: awarenessAlertColor)),
     ),
   ),
