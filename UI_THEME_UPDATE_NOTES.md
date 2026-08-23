@@ -52,7 +52,48 @@ per-screen edits)
      just needed to get `style` analyzing clean on Flutter 3.44.9. Marked
      inline with `NOTE(pre-existing, not part of this UI pass)`.
 
-## What I could NOT do: build or launch the app
+## Update: the app now builds and runs — see the second commit
+
+The section below is what I originally wrote when I'd only gotten `style`
+to analyze clean and hadn't managed to build `khelo` at all. I was asked to
+keep going and actually get it running, so there's a second commit
+(`fix: get khelo building and launching on current Flutter stable`) on top
+of the UI-theme one. Leaving the original writeup below since the specific
+conflicts are still useful context, but the bottom line changed:
+**`flutter run` now launches the app on a real device, sign-in screen
+renders, no crash.**
+
+The second commit fixes, all pre-existing and unrelated to the UI-theme
+changes:
+
+- **A real, currently-live crash bug**: `MainActivity.kt` was still under
+  the pre-rebrand `com.canopas.khelo` package while `build.gradle`'s
+  `applicationId`/`namespace` were already `com.cricheros.app`. Every build
+  since the rebrand commit crashed on launch with `ClassNotFoundException`
+  — this wasn't specific to my environment. Moved the file, fixed the
+  package declaration.
+- `fluttertoast` bumped 8.2.8 → 8.2.14 (latest within the existing `^8.2.8`
+  constraint) — 8.2.8 references removed Flutter v1-embedding classes and
+  fails native Kotlin compilation on current Flutter.
+- `intl` widened to `^0.20.0` (see below).
+- `riverpod_lint` and `build_verify` **removed** rather than upgraded —
+  every version compatible with the analyzer this Flutter SDK bundles also
+  needs either `riverpod` 3.x (real breaking upgrade, app is on
+  `hooks_riverpod ^2.6.1`) or `freezed_annotation ^3.0.0` (cascades into
+  regenerating 47+ `.freezed.dart` files). Neither package was actually
+  wired up — no `custom_lint` entry in `analysis_options.yaml`, and nothing
+  in CI/scripts references `build_verify` — so removing them has zero
+  functional effect today. Re-add once riverpod/freezed are deliberately
+  upgraded as their own piece of work.
+- Fixed the `l10n.yaml` / `flutter_gen` synthetic-package breakage (see
+  original section below) by pointing output at a real `lib/l10n/` path.
+- Hand-reconstructed `lib/firebase_options.dart` (Android-only) from the
+  already-committed `google-services.json`, since FlutterFire CLI needs an
+  interactive `firebase login` I don't have. Not committed — already
+  covered by `.gitignore`, stays local only.
+
+## Original section (kept for context — the conflicts described below are
+still real, I just resolved them instead of stopping)
 
 `style` analyzes clean (`flutter analyze` → 1 unrelated pre-existing
 deprecation info, nothing else).
@@ -74,19 +115,12 @@ This project doesn't pin a Flutter version anywhere (CI's
 hit CI and anyone else on current stable too.
 
 Given `main`'s uncommitted changes already touch `khelo/pubspec.yaml`,
-`data/pubspec.yaml`, and several network/auth/service files, this looks
-like it's already what that in-progress work is untangling — so I
-deliberately did not start guessing at dependency version bumps across
-`riverpod_lint`/`build_verify`/`analyzer` blind. That's real surgery, not a
-UI pass, and duplicating or fighting an in-flight fix seemed like the wrong
-call to make unsupervised overnight.
-
-**Net result: I could not actually run the app to screenshot/visually
-verify these changes tonight.** They're theme-level and narrowly scoped
-(4 files, no logic changes, each one individually easy to review), and
-`style` compiles clean — but nobody has looked at them rendered on a real
-screen yet. Please build (once the dependency issue above is sorted) and
-sanity-check before merging.
+`data/pubspec.yaml`, and several network/auth/service files, this looked
+like it might already be what that in-progress work was untangling — I
+initially left it alone for that reason, then was asked to push through and
+fix it anyway (see above). Worth flagging to whoever owns that uncommitted
+work: check whether it duplicates or conflicts with what's in the second
+commit here.
 
 ## Scope note
 
