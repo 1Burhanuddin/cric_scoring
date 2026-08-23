@@ -9,6 +9,11 @@ final currentUserSessionJsonPod = createPrefProvider<String?>(
   defaultValue: null,
 );
 
+final accessTokenPod = createPrefProvider<String?>(
+  prefKey: "access_token",
+  defaultValue: null,
+);
+
 final currentUserJsonPod = createPrefProvider<String?>(
   prefKey: "user_account",
   defaultValue: null,

@@ -1,148 +1,120 @@
-import 'dart:async';
-
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:collection/collection.dart';
-import 'package:hooks_riverpod/hooks_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
+import '../../api/network/api_client.dart';
 import '../../api/team/team_model.dart';
 import '../../api/user/user_models.dart';
 import '../../errors/app_error.dart';
-import '../../extensions/string_extensions.dart';
-import '../../utils/constant/firestore_constant.dart';
 import '../../utils/dummy_deactivated_account.dart';
 import '../user/user_service.dart';
 
 final teamServiceProvider = Provider(
-  (ref) => TeamService(
-    FirebaseFirestore.instance,
-    ref.read(userServiceProvider),
-  ),
+  (ref) => TeamService(ref.read(apiClientProvider), ref.read(userServiceProvider)),
 );
 
 class TeamService {
-  final FirebaseFirestore _firestore;
+  final ApiClient _api;
   final UserService _userService;
 
-  TeamService(this._firestore, this._userService);
+  TeamService(this._api, this._userService);
 
-  CollectionReference<TeamModel> get _teamsCollection =>
-      _firestore.collection(FireStoreConst.teamsCollection).withConverter(
-            fromFirestore: TeamModel.fromFireStore,
-            toFirestore: (TeamModel team, _) => team.toJson(),
-          );
-
-  CollectionReference<TeamStat> _teamStatCollection(String teamId) =>
-      _teamsCollection
-          .doc(teamId)
-          .collection(FireStoreConst.teamStatCollection)
-          .withConverter(
-            fromFirestore: TeamStat.fromFireStore,
-            toFirestore: (stat, _) => stat.toJson(),
-          );
-
-  String get generateTeamId => _teamsCollection.doc().id;
+  String get generateTeamId => const Uuid().v4().replaceAll('-', '');
 
   Future<TeamModel> getTeamById(String teamId) async {
     try {
-      final teamDoc = await _teamsCollection.doc(teamId).get();
-      final team = teamDoc.data();
-      return team != null
-          ? await fetchDetailsOfTeam(team)
-          : deActiveDummyTeamModel(teamId);
+      final json = await _api.get('/teams/$teamId') as Map<String, dynamic>?;
+      if (json == null) return deActiveDummyTeamModel(teamId);
+      return fetchDetailsOfTeam(TeamModel.fromJson(json));
+    } on AppError catch (error) {
+      if (error.statusCode == '404') return deActiveDummyTeamModel(teamId);
+      rethrow;
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
   }
 
-  Future<int> getUserOwnedTeamsCount(String userId) {
-    final currentPlayer = TeamPlayer(
-      id: userId,
-      role: TeamPlayerRole.admin,
-    );
-
-    final filter = Filter.or(
-      Filter(FireStoreConst.createdBy, isEqualTo: userId),
-      Filter(FireStoreConst.teamPlayers, arrayContains: currentPlayer.toJson()),
-    );
-    return _teamsCollection.where(filter).count().get().then((snapshot) {
-      return snapshot.count ?? 0;
-    }).catchError((error, stack) => throw AppError.fromError(error, stack));
+  Future<int> getUserOwnedTeamsCount(String userId) async {
+    try {
+      final teams = await _rawTeamsByMember(userId);
+      return teams
+          .where(
+            (t) =>
+                t.created_by == userId ||
+                t.players.any((p) => p.id == userId && p.role == TeamPlayerRole.admin),
+          )
+          .length;
+    } catch (error, stack) {
+      throw AppError.fromError(error, stack);
+    }
   }
 
-  Stream<TeamModel> streamTeamById(String teamId) {
-    return _teamsCollection.doc(teamId).snapshots().asyncMap((teamDoc) async {
-      final team = teamDoc.data();
-      return team != null
-          ? await fetchDetailsOfTeam(team)
-          : deActiveDummyTeamModel(teamId);
-    }).handleError((error, stack) => AppError.fromError(error, stack));
+  /// No realtime channel for team documents yet (Stage 2 adds websockets for
+  /// the live-scoring domains first). This emits a single snapshot rather
+  /// than live updates - callers still get a Stream so the UI doesn't change.
+  Stream<TeamModel> streamTeamById(String teamId) async* {
+    yield await getTeamById(teamId);
   }
 
-  Future<TeamStat> getTeamStatById(String teamId) {
-    return _teamStatCollection(teamId)
-        .doc(FireStoreConst.stat)
-        .get()
-        .then((doc) {
-      return doc.data() ?? TeamStat();
-    }).catchError((error, stack) => throw AppError.fromError(error, stack));
+  Future<TeamStat> getTeamStatById(String teamId) async {
+    try {
+      final json = await _api.get('/teams/$teamId/stat') as Map<String, dynamic>;
+      return TeamStat.fromJson(json);
+    } catch (error, stack) {
+      throw AppError.fromError(error, stack);
+    }
   }
 
   Stream<List<TeamModel>> streamUserRelatedTeams({
     required String userId,
     int limit = 10,
-  }) {
-    final currentPlayer = TeamPlayer(id: userId);
-
-    final playerContains = [
-      currentPlayer.copyWith(role: TeamPlayerRole.admin).toJson(),
-      currentPlayer.copyWith(role: TeamPlayerRole.player).toJson(),
-    ];
-    final filter = Filter.or(
-      Filter(FireStoreConst.createdBy, isEqualTo: userId),
-      Filter(FireStoreConst.teamPlayers, arrayContainsAny: playerContains),
-    );
-
-    return _teamsCollection
-        .where(filter)
-        .orderBy(FieldPath.documentId)
-        .limit(limit)
-        .snapshots()
-        .asyncMap((snapshot) async {
-      final teams = await Future.wait(
-        snapshot.docs.map((mainDoc) => fetchDetailsOfTeam(mainDoc.data())),
-      );
-
-      return teams;
-    }).handleError((error, stack) => throw AppError.fromError(error, stack));
+  }) async* {
+    try {
+      final teams = await _rawTeamsByMember(userId);
+      yield await Future.wait(teams.take(limit).map(fetchDetailsOfTeam));
+    } catch (error, stack) {
+      throw AppError.fromError(error, stack);
+    }
   }
 
-  Stream<List<TeamModel>> streamUserOwnedTeams(String userId) {
-    final currentPlayer = TeamPlayer(
-      id: userId,
-      role: TeamPlayerRole.admin,
-    );
-
-    final filter = Filter.or(
-      Filter(FireStoreConst.createdBy, isEqualTo: userId),
-      Filter(FireStoreConst.teamPlayers, arrayContains: currentPlayer.toJson()),
-    );
-    return _teamsCollection
-        .where(filter)
-        .snapshots()
-        .asyncMap((snapshot) async {
-      final teams = await Future.wait(
-        snapshot.docs.map((mainDoc) => fetchDetailsOfTeam(mainDoc.data())),
+  Stream<List<TeamModel>> streamUserOwnedTeams(String userId) async* {
+    try {
+      final teams = await _rawTeamsByMember(userId);
+      final owned = teams.where(
+        (t) =>
+            t.created_by == userId ||
+            t.players.any((p) => p.id == userId && p.role == TeamPlayerRole.admin),
       );
+      yield await Future.wait(owned.map(fetchDetailsOfTeam));
+    } catch (error, stack) {
+      throw AppError.fromError(error, stack);
+    }
+  }
 
-      return teams;
-    }).handleError((error, stack) => throw AppError.fromError(error, stack));
+  Stream<List<TeamModel>> streamUserRelatedTeamsByUserId(String userId) async* {
+    try {
+      final teams = await _rawTeamsByMember(userId);
+      yield await Future.wait(teams.map(fetchDetailsOfTeam));
+    } catch (error, stack) {
+      throw AppError.fromError(error, stack);
+    }
   }
 
   Future<String> updateTeam(TeamModel team) async {
     try {
-      final teamRef = _teamsCollection.doc(team.id);
-      await teamRef.set(team.copyWith(id: teamRef.id), SetOptions(merge: true));
-      return teamRef.id;
+      final response = await _api.put(
+        '/teams/${team.id}',
+        data: {
+          'name': team.name,
+          'city': team.city,
+          'name_initial': team.name_initial,
+          'profile_img_url': team.profile_img_url,
+          'created_by': team.created_by,
+          'team_players':
+              team.players.map((p) => {'id': p.id, 'role': p.role.name}).toList(),
+        },
+      );
+      return (response as Map<String, dynamic>)['id'] as String;
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -150,10 +122,7 @@ class TeamService {
 
   Future<void> updateProfileImageUrl(String teamId, String? imageUrl) async {
     try {
-      final teamRef = _teamsCollection.doc(teamId);
-      await teamRef.update({
-        FireStoreConst.profileImageUrl: imageUrl,
-      });
+      await _api.patch('/teams/$teamId', data: {'profile_img_url': imageUrl});
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -161,8 +130,24 @@ class TeamService {
 
   Future<void> updateTeamStat(String teamId, TeamStat stat) async {
     try {
-      final teamRef = _teamStatCollection(teamId).doc(FireStoreConst.stat);
-      await teamRef.set(stat, SetOptions(merge: true));
+      await _api.put(
+        '/teams/$teamId/stat',
+        data: {
+          'played': stat.played,
+          'status': {
+            'win': stat.status.win,
+            'tie': stat.status.tie,
+            'lost': stat.status.lost,
+          },
+          'runs': stat.runs,
+          'wickets': stat.wickets,
+          'batting_average': stat.batting_average,
+          'bowling_average': stat.bowling_average,
+          'highest_runs': stat.highest_runs,
+          'lowest_runs': stat.lowest_runs,
+          'run_rate': stat.run_rate,
+        },
+      );
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -170,10 +155,10 @@ class TeamService {
 
   Future<void> addPlayersToTeam(String teamId, List<TeamPlayer> players) async {
     try {
-      await _teamsCollection.doc(teamId).update({
-        FireStoreConst.teamPlayers:
-            FieldValue.arrayUnion(players.map((e) => e.toJson()).toList()),
-      });
+      await _api.post(
+        '/teams/$teamId/players',
+        data: {'players': players.map((e) => {'id': e.id, 'role': e.role.name}).toList()},
+      );
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -185,10 +170,11 @@ class TeamService {
     List<TeamPlayer> players,
   ) async {
     try {
-      await _teamsCollection.doc(teamId).update(
-        {
-          FireStoreConst.teamPlayers: players.map((e) => e.toJson()).toList(),
-          FireStoreConst.createdBy: ownerId,
+      await _api.put(
+        '/teams/$teamId/players',
+        data: {
+          'owner_id': ownerId,
+          'players': players.map((e) => {'id': e.id, 'role': e.role.name}).toList(),
         },
       );
     } catch (error, stack) {
@@ -201,11 +187,10 @@ class TeamService {
     List<TeamPlayer> players,
   ) async {
     try {
-      final teamRef = _teamsCollection.doc(teamId);
-      await teamRef.update({
-        FireStoreConst.teamPlayers:
-            FieldValue.arrayRemove(players.map((e) => e.toJson()).toList()),
-      });
+      await _api.delete(
+        '/teams/$teamId/players',
+        data: {'players': players.map((e) => {'id': e.id, 'role': e.role.name}).toList()},
+      );
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -213,14 +198,8 @@ class TeamService {
 
   Future<bool> isTeamNameAvailable(String teamName) async {
     try {
-      final QuerySnapshot teamSnap = await _teamsCollection
-          .where(
-            FireStoreConst.nameLowercase,
-            isEqualTo: teamName.caseAndSpaceInsensitive,
-          )
-          .get();
-
-      return teamSnap.docs.isEmpty;
+      final response = await _api.get('/teams/name-available', query: {'name': teamName});
+      return response as bool;
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -232,29 +211,14 @@ class TeamService {
     String? lastTeamId,
   }) async {
     try {
-      var query = _teamsCollection
-          .where(
-            FireStoreConst.nameLowercase,
-            isGreaterThanOrEqualTo: searchKey.caseAndSpaceInsensitive,
-          )
-          .where(
-            FireStoreConst.nameLowercase,
-            isLessThan: '${searchKey.caseAndSpaceInsensitive}z',
-          )
-          .orderBy(FireStoreConst.id);
-
-      if (lastTeamId != null && lastTeamId.isNotEmpty) {
-        query = query.startAfter([lastTeamId]);
-      }
-
-      query = query.limit(limit);
-      final snapshot = await query.get();
-
-      final teams = await Future.wait(
-        snapshot.docs.map((mainDoc) => fetchDetailsOfTeam(mainDoc.data())),
+      final response = await _api.get(
+        '/teams/search',
+        query: {'q': searchKey, 'limit': limit.toString()},
       );
-
-      return teams;
+      final teams = (response as List)
+          .map((json) => TeamModel.fromJson(json as Map<String, dynamic>))
+          .toList();
+      return Future.wait(teams.map(fetchDetailsOfTeam));
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -262,13 +226,34 @@ class TeamService {
 
   Future<void> deleteTeam(String teamId) async {
     try {
-      await _teamsCollection.doc(teamId).delete();
+      await _api.delete('/teams/$teamId');
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
   }
 
-  // Helper Method
+  Future<List<TeamModel>> getTeamsByIds(List<String> teamIds) async {
+    try {
+      if (teamIds.isEmpty) return [];
+      final response = await _api.get('/teams', query: {'ids': teamIds});
+      final teams = (response as List)
+          .map((json) => TeamModel.fromJson(json as Map<String, dynamic>))
+          .toList();
+      return Future.wait(teams.map(fetchDetailsOfTeam));
+    } catch (error, stack) {
+      throw AppError.fromError(error, stack);
+    }
+  }
+
+  // Helper methods
+
+  Future<List<TeamModel>> _rawTeamsByMember(String userId) async {
+    final response = await _api.get('/teams/by-member/$userId');
+    return (response as List)
+        .map((json) => TeamModel.fromJson(json as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<TeamModel> fetchDetailsOfTeam(TeamModel team) async {
     final stat = await getTeamStatById(team.id);
     team = team.copyWith(stat: stat);
@@ -296,8 +281,7 @@ class TeamService {
 
   Future<List<UserModel>> getMemberListFromUserIds(List<String> users) async {
     try {
-      final userList = await _userService.getUsersByIds(users);
-      return userList;
+      return await _userService.getUsersByIds(users);
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -310,53 +294,5 @@ class TeamService {
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
-  }
-
-  Future<List<TeamModel>> getTeamsByIds(List<String> teamIds) async {
-    try {
-      return await _teamsCollection
-          .where(FieldPath.documentId, whereIn: teamIds)
-          .get()
-          .then((snapshot) async {
-        final teams = await Future.wait(
-          snapshot.docs.map((mainDoc) => fetchDetailsOfTeam(mainDoc.data())),
-        );
-
-        return teams;
-      });
-    } catch (error, stack) {
-      throw AppError.fromError(error, stack);
-    }
-  }
-
-  Stream<List<TeamModel>> streamUserRelatedTeamsByUserId(String userId) {
-    final currentPlayer = TeamPlayer(id: userId);
-
-    final playerContains = [
-      currentPlayer.copyWith(role: TeamPlayerRole.admin).toJson(),
-      currentPlayer.copyWith(role: TeamPlayerRole.player).toJson(),
-    ];
-
-    return _teamsCollection
-        .where(FireStoreConst.teamPlayers, arrayContainsAny: playerContains)
-        .snapshots()
-        .asyncMap((snapshot) async {
-      return await Future.wait(
-        snapshot.docs.map((mainDoc) async {
-          final team = mainDoc.data();
-
-          final users = await getMemberListFromUserIds(
-            team.players.map((e) => e.id).toList(),
-          );
-
-          final players = team.players.map((player) {
-            final user = users.firstWhere((element) => element.id == player.id);
-            return player.copyWith(user: user);
-          }).toList();
-
-          return team.copyWith(players: players);
-        }).toList(),
-      );
-    }).handleError((error, stack) => throw AppError.fromError(error, stack));
   }
 }

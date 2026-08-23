@@ -1,121 +1,41 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../api/network/api_client.dart';
 import '../../api/user/user_models.dart';
 import '../../errors/app_error.dart';
-import '../../extensions/list_extensions.dart';
-import '../../storage/app_preferences.dart';
-import '../../utils/constant/firestore_constant.dart';
 import '../../utils/dummy_deactivated_account.dart';
-import '../device/device_service.dart';
 
 final userServiceProvider = Provider((ref) {
-  final service = UserService(
-    ref.read(currentUserPod),
-    FirebaseFirestore.instance,
-    ref.read(deviceServiceProvider),
-  );
-
-  ref.listen(currentUserPod, (_, next) => service._currentUser = next);
-  return service;
+  return UserService(ref.read(apiClientProvider));
 });
 
 class UserService {
-  UserModel? _currentUser;
+  final ApiClient _api;
 
-  final FirebaseFirestore firestore;
-  final DeviceService deviceService;
-
-  UserService(
-    this._currentUser,
-    this.firestore,
-    this.deviceService,
-  );
-
-  CollectionReference<UserModel> get _userRef => firestore
-      .collection(FireStoreConst.usersCollection)
-      .withConverter<UserModel>(
-        fromFirestore: UserModel.fromFireStore,
-        toFirestore: (user, options) => user.toJson(),
-      );
-
-  CollectionReference _sessionRef(String userId) => _userRef
-      .doc(userId)
-      .collection(FireStoreConst.userSessionCollection)
-      .withConverter<ApiSession>(
-        fromFirestore: ApiSession.fromFireStore,
-        toFirestore: (session, _) => session.toJson(),
-      );
-
-  CollectionReference<UserStat> _userStatsRef(String userId) => _userRef
-      .doc(userId)
-      .collection(FireStoreConst.userStatCollection)
-      .withConverter(
-        fromFirestore: UserStat.fromFireStore,
-        toFirestore: (userStat, _) => userStat.toJson(),
-      );
-
-  Future<void> clearSession({
-    required String uid,
-    required String sessionId,
-  }) async {
-    await _sessionRef(uid).doc(sessionId).delete();
-  }
-
-  Future<ApiSession> _createSession(String userId) async {
-    final sessionDocRef = _sessionRef(userId).doc();
-    final session = ApiSession(
-      id: sessionDocRef.id,
-      user_id: userId,
-      device_type: deviceService.currentPlatformType(),
-      device_id: deviceService.deviceId,
-      device_name: await deviceService.deviceName,
-      app_version: await deviceService.appVersion,
-      os_version: await deviceService.osVersion,
-      created_at: DateTime.now(),
-    );
-
-    await sessionDocRef.set(session);
-    return session;
-  }
-
-  Future<(UserModel, ApiSession)> upsertUser({
-    required String uid,
-    required String phone,
-  }) async {
-    var user = await getUser(uid);
-    user ??= await _createUser(uid, phone);
-    final session = await _createSession(uid);
-    return (user, session);
-  }
+  UserService(this._api);
 
   Future<UserModel?> getUser(String id) async {
     try {
-      final snapshot = await _userRef.doc(id).get();
-      return (snapshot.exists) ? snapshot.data() : null;
-    } catch (error, stack) {
-      throw AppError.fromError(error, stack);
+      final response = await _api.get('/users/$id');
+      if (response == null) return null;
+      return UserModel.fromJson(response as Map<String, dynamic>);
+    } on AppError catch (error) {
+      if (error.statusCode == '404') return null;
+      rethrow;
     }
   }
 
   Future<List<UserModel>> getUsersByIds(List<String> ids) async {
-    final List<UserModel> users = [];
+    if (ids.isEmpty) return [];
     try {
-      if (ids.isEmpty) return [];
-      for (final tenIds in ids.chunked(10)) {
-        final snapshot =
-            await _userRef.where(FireStoreConst.id, whereIn: tenIds).get();
+      final response = await _api.get('/users', query: {'ids': ids});
+      final users = (response as List)
+          .map((json) => UserModel.fromJson(json as Map<String, dynamic>))
+          .toList();
 
-        users.addAll(snapshot.docs.map((user) => user.data()).toList());
-
-        final deactivatedUserIds =
-            tenIds.where((id) => !users.map((user) => user.id).contains(id));
-        users.addAll(
-          deactivatedUserIds.map(
-            (id) => deActiveDummyUserAccount(id),
-          ),
-        );
-      }
+      final foundIds = users.map((u) => u.id).toSet();
+      final missingIds = ids.where((id) => !foundIds.contains(id));
+      users.addAll(missingIds.map((id) => deActiveDummyUserAccount(id)));
 
       return users;
     } catch (error, stack) {
@@ -123,42 +43,63 @@ class UserService {
     }
   }
 
-  Stream<UserModel> streamUserById(String id) {
-    return _userRef.doc(id).snapshots().map((snapshot) {
-      final userModel = snapshot.data();
-      if (userModel == null) {
-        return deActiveDummyUserAccount(id);
-      }
-      return userModel;
-    }).handleError((error, stack) {
-      throw AppError.fromError(error, stack);
-    });
-  }
-
-  Stream<List<UserStat>?> streamUserStats(String userId) {
-    return _userStatsRef(userId).snapshots().map((snapshot) {
-      return snapshot.docs.isEmpty
-          ? null
-          : snapshot.docs.map((e) => e.data()).toList();
-    }).handleError((error, stack) => throw AppError.fromError(error, stack));
-  }
-
-  Future<UserStat?> getUserStats(String userId, UserStatType type) async {
+  /// No realtime channel for user profiles yet (Stage 2 adds websockets for
+  /// the live-scoring domains first). This emits a single snapshot rather
+  /// than live updates - callers still get a Stream so the UI doesn't change.
+  Stream<UserModel> streamUserById(String id) async* {
     try {
-      final snapshot = await _userStatsRef(userId)
-          .where(FireStoreConst.type, isEqualTo: type.name)
-          .limit(1)
-          .get();
-      return snapshot.docs.isEmpty ? null : snapshot.docs.first.data();
+      final user = await getUser(id);
+      yield user ?? deActiveDummyUserAccount(id);
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
   }
 
+  /// See streamUserById - single snapshot, not live, until Stage 2.
+  Stream<List<UserStat>?> streamUserStats(String userId) async* {
+    try {
+      final stats = await _fetchUserStats(userId);
+      yield stats.isEmpty ? null : stats;
+    } catch (error, stack) {
+      throw AppError.fromError(error, stack);
+    }
+  }
+
+  Future<UserStat?> getUserStats(String userId, UserStatType type) async {
+    try {
+      final stats = await _fetchUserStats(userId);
+      for (final stat in stats) {
+        if (stat.type == type) return stat;
+      }
+      return null;
+    } catch (error, stack) {
+      throw AppError.fromError(error, stack);
+    }
+  }
+
+  Future<List<UserStat>> _fetchUserStats(String userId) async {
+    final response = await _api.get('/users/$userId/stats');
+    return (response as List)
+        .map((json) => UserStat.fromJson(json as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<void> updateUser(UserModel user) async {
     try {
-      final userRef = _userRef.doc(user.id);
-      await userRef.set(user, SetOptions(merge: true));
+      await _api.patch(
+        '/users/me',
+        data: {
+          if (user.name != null) 'name': user.name,
+          if (user.location != null) 'location': user.location,
+          if (user.dob != null) 'dob': user.dob!.toIso8601String().split('T').first,
+          if (user.email != null) 'email': user.email,
+          if (user.profile_img_url != null) 'profile_img_url': user.profile_img_url,
+          if (user.gender != null) 'gender': user.gender!.value,
+          if (user.player_role != null) 'player_role': user.player_role!.value,
+          if (user.batting_style != null) 'batting_style': user.batting_style!.value,
+          if (user.bowling_style != null) 'bowling_style': user.bowling_style!.value,
+        },
+      );
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -166,29 +107,16 @@ class UserService {
 
   Future<void> updateUserStats(String userId, UserStat stats) async {
     try {
-      final userStatsRef = _userStatsRef(userId);
-
-      await userStatsRef
-          .doc(stats.type?.name)
-          .set(stats, SetOptions(merge: true));
-    } catch (error, stack) {
-      throw AppError.fromError(error, stack);
-    }
-  }
-
-  Future<UserModel> _createUser(String userId, String phone) async {
-    final user = UserModel(
-      id: userId,
-      phone: phone,
-      created_at: DateTime.now(),
-    );
-    await _userRef.doc(userId).set(user);
-    return user;
-  }
-
-  Future<void> deleteUser() async {
-    try {
-      await _userRef.doc(_currentUser?.id).delete();
+      await _api.put(
+        '/users/$userId/stats',
+        data: {
+          'matches': stats.matches,
+          'type': (stats.type ?? UserStatType.other).name,
+          'batting': stats.batting.toJson(),
+          'bowling': stats.bowling.toJson(),
+          'fielding': stats.fielding.toJson(),
+        },
+      );
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -200,48 +128,26 @@ class UserService {
     String? lastUserId,
   }) async {
     try {
-      var query = _userRef
-          .where(
-            FireStoreConst.nameLowercase,
-            isGreaterThanOrEqualTo: searchKey.toLowerCase(),
-          )
-          .where(
-            FireStoreConst.nameLowercase,
-            isLessThan: '${searchKey.toLowerCase()}z',
-          )
-          .orderBy(FireStoreConst.id);
-
-      if (lastUserId != null) {
-        query = query.startAfter([lastUserId]);
-      }
-
-      query = query.limit(limit);
-      final snapshot = await query.get();
-
-      return snapshot.docs.map((doc) {
-        return doc.data();
-      }).toList();
+      final response = await _api.get(
+        '/users/search/by-name',
+        query: {'q': searchKey, 'limit': limit.toString()},
+      );
+      return (response as List)
+          .map((json) => UserModel.fromJson(json as Map<String, dynamic>))
+          .toList();
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
-  }
-
-  Future<void> registerDevice(
-    String sessionId, {
-    required String userId,
-    required String deviceToken,
-  }) async {
-    await _sessionRef(userId).doc(sessionId).update({
-      FireStoreConst.deviceFcmToken: deviceToken,
-    });
   }
 
   Future<void> updateUserNotificationSettings(
     String id,
     bool notifications,
   ) async {
-    await _userRef
-        .doc(id)
-        .update({FireStoreConst.notifications: notifications});
+    try {
+      await _api.patch('/users/me/notifications', data: {'notifications': notifications});
+    } catch (error, stack) {
+      throw AppError.fromError(error, stack);
+    }
   }
 }

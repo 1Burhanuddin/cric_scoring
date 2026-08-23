@@ -6,20 +6,23 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../errors/app_error.dart';
-import '../../service/auth/auth_service.dart';
 import '../../utils/constant/firestore_constant.dart';
 
 import 'package:http/http.dart' as http;
 
 import 'endpoint.dart';
-import 'interceptor/auth_client.dart';
-
-final httpProvider = Provider((ref) {
-  final client = http.Client();
-  return AuthHttpClient(client, ref.read(firebaseAuthProvider));
-});
 
 final rawDioProvider = Provider((ref) {
+  return Dio()
+    ..options.connectTimeout = const Duration(seconds: 30)
+    ..options.sendTimeout = const Duration(seconds: 30)
+    ..options.receiveTimeout = const Duration(seconds: 30);
+});
+
+/// Separate Dio instance (and provider) from [rawDioProvider] so the JWT auth
+/// interceptor added by ApiClient never leaks the access token to unrelated
+/// callers sharing rawDioProvider (e.g. DeviceService's ip-api.com lookup).
+final apiDioProvider = Provider((ref) {
   return Dio()
     ..options.connectTimeout = const Duration(seconds: 30)
     ..options.sendTimeout = const Duration(seconds: 30)

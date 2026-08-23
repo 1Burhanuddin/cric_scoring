@@ -11,7 +11,13 @@ import 'package:cricheros/ui/app.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 
-const _baseUrl = 'https://apiv1-g7mqemn2ga-el.a.run.app/';
+// CricHeros backend (FastAPI + Postgres). Override per-environment with
+// `--dart-define=API_BASE_URL=https://api.cricheros.app`. The Android emulator
+// reaches a host-machine docker-compose backend via 10.0.2.2, not localhost.
+const _baseUrl = String.fromEnvironment(
+  'API_BASE_URL',
+  defaultValue: 'http://10.0.2.2:8001',
+);
 const appBaseUrl = 'https://khelo.canopas.com';
 
 void main() async {

@@ -1,81 +1,87 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../api/network/api_client.dart';
 import '../../api/user/user_models.dart';
 import '../../errors/app_error.dart';
 import '../../extensions/string_extensions.dart';
 import '../../storage/app_preferences.dart';
 import '../../storage/provider/preferences_provider.dart';
-import '../user/user_service.dart';
-
-final firebaseAuthProvider = Provider((ref) => FirebaseAuth.instance);
+import '../device/device_service.dart';
 
 final authServiceProvider = Provider((ref) {
   return AuthService(
-    ref.read(firebaseAuthProvider),
-    ref.read(userServiceProvider),
+    ref.read(apiClientProvider),
+    ref.read(deviceServiceProvider),
     ref.read(currentUserJsonPod.notifier),
     ref.read(currentUserSessionJsonPod.notifier),
+    ref.read(accessTokenPod.notifier),
   );
 });
 
+class _AuthTokenResponse {
+  final String accessToken;
+  final UserModel user;
+  final ApiSession session;
+
+  _AuthTokenResponse({
+    required this.accessToken,
+    required this.user,
+    required this.session,
+  });
+
+  factory _AuthTokenResponse.fromJson(Map<String, dynamic> json) =>
+      _AuthTokenResponse(
+        accessToken: json['access_token'] as String,
+        user: UserModel.fromJson(json['user'] as Map<String, dynamic>),
+        session: ApiSession.fromJson(json['session'] as Map<String, dynamic>),
+      );
+}
+
 class AuthService {
-  final FirebaseAuth _auth;
-  final UserService _userService;
+  final ApiClient _api;
+  final DeviceService _deviceService;
 
   final PreferenceNotifier<String?> _currentUserNotifier;
   final PreferenceNotifier<String?> _userSessionNotifier;
+  final PreferenceNotifier<String?> _accessTokenNotifier;
 
   AuthService(
-    this._auth,
-    this._userService,
+    this._api,
+    this._deviceService,
     this._currentUserNotifier,
     this._userSessionNotifier,
-  ) {
-    _auth.authStateChanges().listen(
-      (user) {
-        if (user == null) {
-          _currentUserNotifier.state = null;
-          _userSessionNotifier.state = null;
-        }
-      },
-    );
-  }
+    this._accessTokenNotifier,
+  );
 
-  Stream<User?> get user => _auth.authStateChanges();
+  bool get isSignedIn => _accessTokenNotifier.state != null;
 
+  /// Sends the OTP via the backend (MSG91). There's no Firebase-style
+  /// "auto verification completed" path with MSG91, so [onVerificationCompleted]
+  /// is never invoked here - it's kept only so the sign-in screen's callback
+  /// wiring doesn't need to change.
   Future<void> verifyPhoneNumber({
     required String countryCode,
     required String phoneNumber,
     Function(String, int?)? onCodeSent,
-    Function(PhoneAuthCredential, UserCredential)? onVerificationCompleted,
+    Function()? onVerificationCompleted,
     Function(AppError)? onVerificationFailed,
     Function(String)? onCodeAutoRetrievalTimeout,
   }) async {
     try {
-      await _auth.verifyPhoneNumber(
-        phoneNumber: countryCode + phoneNumber,
-        verificationCompleted: (phoneAuthCredential) async {
-          final userCredential =
-              await _auth.signInWithCredential(phoneAuthCredential);
-          await _onVerificationSuccess(
-            countryCode,
-            phoneNumber,
-            userCredential,
-          );
-          onVerificationCompleted?.call(phoneAuthCredential, userCredential);
+      await _api.post(
+        '/auth/otp/send',
+        data: {
+          'country_code': countryCode,
+          'phone_number': phoneNumber.caseAndSpaceInsensitive,
         },
-        verificationFailed: (FirebaseAuthException e) =>
-            onVerificationFailed?.call(AppError.fromError(e, e.stackTrace)),
-        codeSent: (String verificationId, int? resendToken) =>
-            onCodeSent?.call(verificationId, resendToken),
-        codeAutoRetrievalTimeout: (verificationId) =>
-            onCodeAutoRetrievalTimeout?.call(verificationId),
       );
+      // No real verification-id concept with MSG91; pass a non-null placeholder
+      // so the OTP-entry screen's `verificationId != null` gate is satisfied.
+      onCodeSent?.call('$countryCode-$phoneNumber', null);
     } catch (error, stack) {
-      throw AppError.fromError(error, stack);
+      onVerificationFailed?.call(AppError.fromError(error, stack));
     }
   }
 
@@ -86,86 +92,72 @@ class AuthService {
     String otp,
   ) async {
     try {
-      final credential = PhoneAuthProvider.credential(
-        verificationId: verificationId,
-        smsCode: otp,
+      final deviceName = await _deviceService.deviceName;
+      final appVersion = await _deviceService.appVersion;
+      final osVersion = await _deviceService.osVersion;
+
+      final response = await _api.post(
+        '/auth/otp/verify',
+        data: {
+          'country_code': countryCode,
+          'phone_number': phoneNumber.caseAndSpaceInsensitive,
+          'otp': otp,
+          'device_id': _deviceService.deviceId,
+          'device_name': deviceName,
+          'device_type': _deviceService.currentPlatformType(),
+          'app_version': appVersion,
+          'os_version': osVersion,
+        },
       );
 
-      final userCredential = await _auth.signInWithCredential(credential);
-      await _onVerificationSuccess(countryCode, phoneNumber, userCredential);
+      final token =
+          _AuthTokenResponse.fromJson(response as Map<String, dynamic>);
+
+      _accessTokenNotifier.state = token.accessToken;
+      _currentUserNotifier.state = token.user.toJsonString();
+      _userSessionNotifier.state = token.session.toJsonString();
+    } catch (error, stack) {
+      throw AppError.fromError(error, stack);
+    }
+
+    // FCM registration is best-effort and must never fail sign-in: on some
+    // devices FirebaseMessaging.getToken() throws FirebaseInstallationsException
+    // (Google Play Services availability/network issues) rather than just
+    // returning null, which would otherwise surface as a false "sign-in failed"
+    // even though the account/session above was already created successfully.
+    try {
       final deviceToken = await FirebaseMessaging.instance.getToken();
       if (deviceToken == null) {
         debugPrint("AuthService: FCMToken is null");
         return;
       }
       await registerDevice(deviceToken);
-    } catch (error, stack) {
-      throw AppError.fromError(error, stack);
-    }
-  }
-
-  Future<void> _onVerificationSuccess(
-    String countryCode,
-    String phoneNumber,
-    UserCredential credential,
-  ) async {
-    try {
-      if (credential.user == null) {
-        _currentUserNotifier.state = null;
-        _userSessionNotifier.state = null;
-        return;
-      }
-      final phone = "$countryCode ${phoneNumber.caseAndSpaceInsensitive}";
-
-      final (user, session) = await _userService.upsertUser(
-        uid: credential.user!.uid,
-        phone: phone,
-      );
-
-      _currentUserNotifier.state = user.toJsonString();
-      _userSessionNotifier.state = session.toJsonString();
-    } catch (error, stack) {
-      throw AppError.fromError(error, stack);
+    } catch (error) {
+      debugPrint("AuthService: FCM registration failed (non-fatal) -> $error");
     }
   }
 
   Future<void> reAuthenticateAndDeleteAccount() async {
-    try {
-      final providerData = _auth.currentUser?.providerData.first;
-      if (PhoneAuthProvider().providerId == providerData?.providerId) {
-        await _auth.currentUser
-            ?.reauthenticateWithProvider(PhoneAuthProvider());
-        deleteAccount();
-      }
-    } catch (error, stack) {
-      throw AppError.fromError(error, stack);
-    }
+    // JWT sessions don't have Firebase's "requires recent login" re-auth
+    // requirement, so this is now equivalent to a direct delete.
+    await deleteAccount();
   }
 
   Future<void> clearSession() async {
-    if (_userSessionNotifier.state == null) return;
-    final session = ApiSession.fromJsonString(_userSessionNotifier.state!);
-    final userId = _auth.currentUser?.uid;
-
-    if (session == null || userId == null) return;
-    await _userService.clearSession(uid: userId, sessionId: session.id);
-    _userSessionNotifier.state = null;
+    if (!isSignedIn) return;
+    try {
+      await _api.post('/auth/logout');
+    } finally {
+      _userSessionNotifier.state = null;
+      _accessTokenNotifier.state = null;
+    }
   }
 
   Future<void> registerDevice(String fcmToken) async {
-    if (_userSessionNotifier.state == null) return;
+    if (!isSignedIn) return;
 
     try {
-      final session = ApiSession.fromJsonString(_userSessionNotifier.state!);
-      if (session == null) return;
-
-      if (session.device_fcm_token == fcmToken) return;
-
-      await _userService.registerDevice(
-        session.id,
-        userId: session.user_id,
-        deviceToken: fcmToken,
-      );
+      await _api.post('/auth/device', data: {'device_fcm_token': fcmToken});
       debugPrint('AuthService: registerDevice succeed with token $fcmToken');
     } catch (error) {
       debugPrint('AuthService: registerDevice error $error');
@@ -175,7 +167,6 @@ class AuthService {
   Future<void> signOut() async {
     try {
       await clearSession();
-      await _auth.signOut();
       _currentUserNotifier.state = null;
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
@@ -184,9 +175,10 @@ class AuthService {
 
   Future<void> deleteAccount() async {
     try {
-      await _userService.deleteUser();
+      await _api.delete('/auth/account');
       _currentUserNotifier.state = null;
-      await _auth.currentUser?.delete();
+      _userSessionNotifier.state = null;
+      _accessTokenNotifier.state = null;
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
