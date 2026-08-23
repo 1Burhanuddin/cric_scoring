@@ -2,3 +2,13 @@ arb-dir: assets/locales
 template-arb-file: app_en.arb
 output-localization-file: app_localizations.dart
 nullable-getter: false
+# Pre-existing SDK drift, not part of the UI pass: the old synthetic
+# `package:flutter_gen/...` package (what every `import
+# 'package:flutter_gen/gen_l10n/app_localizations.dart'` in this codebase
+# expects) no longer gets generated on current Flutter — the whole
+# synthetic-package mechanism is deprecated and has no effect anymore, so
+# gen-l10n was falling back to writing real files into arb-dir (not
+# inside lib/, so not importable at all) when no output-dir was set.
+# Pointing output at a real lib/ path and switching those imports to it
+# (see the files this touches) is the fix.
+output-dir: lib/l10n

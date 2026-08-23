@@ -32,7 +32,9 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  intl: ^0.19.0
+  # Widened from ^0.19.0 — flutter_localizations on current Flutter stable
+  # pins intl 0.20.2, which ^0.19.0 can't satisfy. Pre-existing SDK drift.
+  intl: ^0.20.0
 
   cricheros_style:
     path: ../style
@@ -86,11 +88,20 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
-  riverpod_lint: ^2.3.11
+  # riverpod_lint and build_verify removed (pre-existing SDK drift, not
+  # part of the UI pass — see UI_THEME_UPDATE_NOTES.md): every version of
+  # riverpod_lint compatible with the analyzer this Flutter SDK bundles
+  # also requires either riverpod 3.x (this app is on hooks_riverpod
+  # ^2.6.1 — a real breaking upgrade) or freezed_annotation ^3.0.0 (would
+  # cascade into regenerating 47+ .freezed.dart files across both
+  # packages). Neither package was actually wired up — no `custom_lint`
+  # plugin entry in analysis_options.yaml, and nothing in CI/scripts
+  # references build_verify — so this has zero functional effect today,
+  # just unblocks `pub get`. Re-add once riverpod/freezed are deliberately
+  # upgraded.
 
   # code generation
   build_runner: ^2.4.13
-  build_verify: ^3.1.0
   go_router_builder: ^2.7.1
   freezed: ^2.5.7
   flutter_gen_runner: ^5.7.0
