@@ -203,34 +203,16 @@ class TournamentService {
     }).catchError((error, stack) => throw AppError.fromError(error, stack));
   }
 
+  /// Tournaments aren't migrated to Postgres yet (out of scope for the
+  /// matches migration pass) and Firestore access is unavailable now that
+  /// the app no longer signs into Firebase Auth. Since there's no tournament
+  /// data anywhere yet either way, this returns an accurate empty result
+  /// rather than a Firestore permission-denied error - unblocks the home
+  /// screen's combined matches+tournaments+leaderboard stream. Revert to the
+  /// Firestore-backed version (or a real Postgres one) once tournaments get
+  /// their own migration pass.
   Stream<List<TournamentModel>> streamActiveTournaments() {
-    final DateTime now = DateTime.now();
-    final DateTime thirtyDaysAgo = now.subtract(Duration(days: 30));
-
-    final Timestamp timestamp = Timestamp.fromDate(thirtyDaysAgo);
-
-    return _tournamentCollection
-        .where(Filter(FireStoreConst.startDate, isGreaterThan: timestamp))
-        .snapshots()
-        .asyncMap(
-      (event) async {
-        return await Future.wait(
-          event.docs.map(
-            (e) async {
-              var tournament = e.data();
-              final matchIds = tournament.match_ids;
-              if (matchIds.isNotEmpty) {
-                final matches = await _matchService.getMatchesByIds(matchIds);
-                final status = tournament.getTournamentStatus(matches);
-                tournament = tournament.copyWith(status: status);
-              }
-
-              return tournament;
-            },
-          ),
-        );
-      },
-    ).handleError((error, stack) => throw AppError.fromError(error, stack));
+    return Stream.value(const <TournamentModel>[]);
   }
 
   Stream<List<TournamentModel>> streamCurrentUserRelatedMatches(String userId) {

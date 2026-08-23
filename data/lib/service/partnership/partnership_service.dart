@@ -1,53 +1,68 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 
+import '../../api/network/api_client.dart';
 import '../../api/partnership/partnership_model.dart';
 import '../../errors/app_error.dart';
-import '../../utils/constant/firestore_constant.dart';
 
 final partnershipServiceProvider = Provider(
-  (ref) => PartnershipService(FirebaseFirestore.instance),
+  (ref) => PartnershipService(ref.read(apiClientProvider)),
 );
 
 class PartnershipService {
-  final FirebaseFirestore _firestore;
+  final ApiClient _api;
 
-  PartnershipService(this._firestore);
+  PartnershipService(this._api);
 
-  CollectionReference<PartnershipModel> get _partnershipCollection => _firestore
-      .collection(FireStoreConst.partnershipsCollection)
-      .withConverter(
-        fromFirestore: PartnershipModel.fromFireStore,
-        toFirestore: (PartnershipModel partnership, _) => partnership.toJson(),
-      );
-
-  String get generatePartnershipId => _partnershipCollection.doc().id;
+  String get generatePartnershipId => const Uuid().v4().replaceAll('-', '');
 
   Future<String> updatePartnership(PartnershipModel partnership) async {
     try {
-      final partnershipRef = _partnershipCollection.doc(partnership.id);
-      await partnershipRef.set(
-        partnership.copyWith(id: partnershipRef.id),
-        SetOptions(merge: true),
+      final id = partnership.id.isNotEmpty ? partnership.id : generatePartnershipId;
+      final response = await _api.put(
+        '/partnerships/$id',
+        data: {
+          'match_id': partnership.match_id,
+          'inning_id': partnership.inning_id,
+          'player_ids': partnership.player_ids,
+          'players': partnership.players
+              .map((p) => {
+                    'player_id': p.player_id,
+                    'runs': p.runs,
+                    'ball_faced': p.ball_faced,
+                    'fours': p.fours,
+                    'sixes': p.sixes,
+                  })
+              .toList(),
+          'runs': partnership.runs,
+          'extras': partnership.extras,
+          'ball_faced': partnership.ball_faced,
+          'start_over': partnership.start_over,
+          'end_over': partnership.end_over,
+        },
       );
-      return partnershipRef.id;
+      return (response as Map<String, dynamic>)['id'] as String;
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
   }
 
-  Stream<List<PartnershipModel>> streamPartnershipByMatches(String matchId) {
-    return _partnershipCollection
-        .where(FireStoreConst.matchId, isEqualTo: matchId)
-        .snapshots()
-        .asyncMap((snapshot) async {
-      return snapshot.docs.map((mainDoc) => mainDoc.data()).toList();
-    }).handleError((error, stack) => throw AppError.fromError(error, stack));
+  /// No realtime channel yet - emits a single snapshot. See BallScoreService
+  /// for the same caveat during live scoring.
+  Stream<List<PartnershipModel>> streamPartnershipByMatches(String matchId) async* {
+    try {
+      final response = await _api.get('/partnerships/by-match/$matchId');
+      yield (response as List)
+          .map((json) => PartnershipModel.fromJson(json as Map<String, dynamic>))
+          .toList();
+    } catch (error, stack) {
+      throw AppError.fromError(error, stack);
+    }
   }
 
   Future<void> deletePartnership(String partnershipId) async {
     try {
-      await _partnershipCollection.doc(partnershipId).delete();
+      await _api.delete('/partnerships/$partnershipId');
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }

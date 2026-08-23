@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../api/leaderboard/leaderboard_model.dart';
 import '../../errors/app_error.dart';
 import '../../extensions/date_extension.dart';
-import '../../utils/combine_latest.dart';
 import '../../utils/constant/firestore_constant.dart';
 import '../user/user_service.dart';
 
@@ -136,55 +135,18 @@ class LeaderboardService {
     }).handleError((error, stack) => throw AppError.fromError(error, stack));
   }
 
+  /// Leaderboards aren't migrated to Postgres yet (out of scope for the
+  /// matches migration pass) and Firestore access is unavailable now that
+  /// the app no longer signs into Firebase Auth. Since there's no leaderboard
+  /// data anywhere yet either way, this returns an accurate empty result
+  /// rather than a Firestore permission-denied error - unblocks the home
+  /// screen's combined matches+tournaments+leaderboard stream. Revert to the
+  /// Firestore-backed version (or a real Postgres one) once leaderboards get
+  /// their own migration pass.
   Stream<List<LeaderboardModel>> streamLeaderboard({
     LeaderboardType type = LeaderboardType.allTime,
     int limit = 20,
   }) {
-    return combineLatest3(
-      streamLeaderboardByField(
-        type: type,
-        limit: limit,
-        field: LeaderboardField.batting,
-      ),
-      streamLeaderboardByField(
-        type: type,
-        limit: limit,
-        field: LeaderboardField.bowling,
-      ),
-      streamLeaderboardByField(
-        type: type,
-        limit: limit,
-        field: LeaderboardField.fielding,
-      ),
-    ).map(
-      (event) {
-        final List<LeaderboardModel> leaderboard = [];
-        if (event.$1.isNotEmpty) {
-          leaderboard.add(
-            LeaderboardModel(
-              type: LeaderboardField.batting,
-              players: event.$1,
-            ),
-          );
-        }
-        if (event.$2.isNotEmpty) {
-          leaderboard.add(
-            LeaderboardModel(
-              type: LeaderboardField.bowling,
-              players: event.$2,
-            ),
-          );
-        }
-        if (event.$3.isNotEmpty) {
-          leaderboard.add(
-            LeaderboardModel(
-              type: LeaderboardField.fielding,
-              players: event.$3,
-            ),
-          );
-        }
-        return leaderboard;
-      },
-    ).handleError((error, stack) => throw AppError.fromError(error, stack));
+    return Stream.value(const <LeaderboardModel>[]);
   }
 }

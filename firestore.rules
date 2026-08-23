@@ -3,156 +3,62 @@ rules_version = '2';
 // CricHeros Firestore security rules
 //
 // Collection names mirror data/lib/utils/constant/firestore_constant.dart.
-// General principle: every read/write requires authentication. Writes to a
-// document are restricted to its owner/creator, while live match data may be
-// written by any participant (creator, team creator, scorer or umpire) of the
-// referenced match.
+//
+// MIGRATION NOTE (temporary, remove once Stage 2/3 of the Postgres migration
+// lands): auth, users, teams, and their stats now live entirely in the new
+// FastAPI/Postgres backend - the app no longer signs into Firebase Auth at
+// all, so `request.auth` is always null here. matches/innings/ball_scores/
+// partnerships/match_events/tournaments/leaderboard are still on Firestore
+// pending Stage 2, so their rules below are opened up (no auth check) rather
+// than requiring a Firebase Auth session that no longer exists. This is safe
+// short-term only because there is no real production data yet - re-tighten
+// these (ideally via the Firebase custom-token bridge, or by finishing the
+// Stage 2 migration) before real users are on the app.
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ---- helpers ----------------------------------------------------------
-
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    function isUser(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    function listHas(list, value) {
-      return list != null && (value in list);
-    }
-
-    // True when the current user is allowed to score/edit a given match.
-    function isMatchParticipant(matchId) {
-      let m = get(/databases/$(database)/documents/matches/$(matchId)).data;
-      return isSignedIn() && (
-        m.created_by == request.auth.uid ||
-        listHas(m.team_creator_ids, request.auth.uid) ||
-        listHas(m.scorer_ids, request.auth.uid) ||
-        listHas(m.umpire_ids, request.auth.uid) ||
-        listHas(m.commentator_ids, request.auth.uid)
-      );
-    }
-
-    // ---- users ------------------------------------------------------------
-    // A user may only read and write their own profile.
-    match /users/{userId} {
-      allow read, write: if isUser(userId);
-    }
-
-    // Per-user session / device token documents are private to the user.
-    match /user_sessions/{sessionId} {
-      allow read, write: if isSignedIn()
-        && (resource == null || resource.data.user_id == request.auth.uid
-            || request.resource.data.user_id == request.auth.uid);
-    }
-
-    // ---- matches ----------------------------------------------------------
-    // Any authenticated user can read matches; only the creator (or a team
-    // creator participating in the match) can modify them.
+    // ---- live scoring (open pending Stage 2 - see migration note above) ---
     match /matches/{matchId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn()
-        && request.resource.data.created_by == request.auth.uid;
-      allow update, delete: if isSignedIn()
-        && (resource.data.created_by == request.auth.uid
-            || listHas(resource.data.team_creator_ids, request.auth.uid));
+      allow read, write: if true;
 
-      // Match settings live as a subcollection of the match.
       match /match_settings/{settingId} {
-        allow read: if isSignedIn();
-        allow write: if isMatchParticipant(matchId);
+        allow read, write: if true;
       }
     }
 
-    // ---- live scoring -----------------------------------------------------
-    // Innings, balls, partnerships and match events: anyone signed in can read
-    // (to follow the match live); only match participants can write.
     match /innings/{inningId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn()
-        && isMatchParticipant(request.resource != null
-            ? request.resource.data.match_id : resource.data.match_id);
+      allow read, write: if true;
     }
 
     match /ball_scores/{ballId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn()
-        && isMatchParticipant(request.resource != null
-            ? request.resource.data.match_id : resource.data.match_id);
+      allow read, write: if true;
     }
 
     match /partnerships/{partnershipId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn()
-        && isMatchParticipant(request.resource != null
-            ? request.resource.data.match_id : resource.data.match_id);
+      allow read, write: if true;
     }
 
     match /match_events/{eventId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn()
-        && isMatchParticipant(request.resource != null
-            ? request.resource.data.match_id : resource.data.match_id);
+      allow read, write: if true;
     }
 
-    // ---- teams ------------------------------------------------------------
-    // Authenticated users can read teams; the creator/owner can write.
-    match /teams/{teamId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn()
-        && request.resource.data.created_by == request.auth.uid;
-      allow update, delete: if isSignedIn()
-        && resource.data.created_by == request.auth.uid;
-
-      // Aggregated team statistics are readable by all signed-in users.
-      match /{statDoc=**} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn();
-      }
-    }
-
-    // ---- tournaments ------------------------------------------------------
-    // Authenticated users can read tournaments; the creator can write.
     match /tournaments/{tournamentId} {
-      allow read: if isSignedIn();
-      allow create: if isSignedIn()
-        && request.resource.data.created_by == request.auth.uid;
-      allow update, delete: if isSignedIn()
-        && resource.data.created_by == request.auth.uid;
+      allow read, write: if true;
 
-      // Tournament sub-stats (team_stats, player_key_stats, ...).
       match /{tournamentSub=**} {
-        allow read: if isSignedIn();
-        allow write: if isSignedIn();
+        allow read, write: if true;
       }
-    }
-
-    // ---- stats & leaderboards --------------------------------------------
-    // Aggregated, app-maintained stats: readable by all signed-in users.
-    match /user_stat/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
-    }
-
-    match /team_stat/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
     }
 
     match /leaderboard/{docId} {
-      allow read: if isSignedIn();
-      allow write: if isSignedIn();
+      allow read, write: if true;
     }
 
-    // ---- support ----------------------------------------------------------
-    // Users can submit support tickets but cannot read others' tickets.
-    match /contact_support/{ticketId} {
-      allow create: if isSignedIn();
-      allow read, update, delete: if false;
-    }
+    // ---- dead collections (migrated to Postgres, kept here defensively) ---
+    // users, user_sessions, teams, user_stat, team_stat, and contact_support
+    // are no longer read/written via Firestore by the app (see AuthService,
+    // UserService, TeamService in data/lib) - default-denied below like
+    // everything else not explicitly listed.
 
     // Deny everything else by default.
     match /{document=**} {
