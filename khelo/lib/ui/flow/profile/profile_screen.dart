@@ -1,4 +1,5 @@
 import 'package:cricheros_data/storage/app_preferences.dart';
+import 'package:flutter/cupertino.dart' show CupertinoIcons;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/svg.dart';
@@ -131,6 +132,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   }
 
   Widget _userProfileView(BuildContext context, ProfileState state) {
+    final subtitle = state.currentUser?.phone ?? state.currentUser?.email;
     return OnTapScale(
       onTap: () async {
         final shouldChangeTabToMyCricket =
@@ -147,18 +149,42 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         child: Row(
           children: [
             ImageAvatar(
-              size: 80,
+              size: 64,
               imageUrl: state.currentUser?.profile_img_url,
               initial: state.currentUser?.nameInitial ?? '?',
+              // Tinted with the brand accent instead of the neutral
+              // container-gray every other avatar-less tile uses — this is
+              // the one avatar on the screen that represents "you", so it
+              // gets the identity color.
+              backgroundColor: context.colorScheme.primary.withValues(alpha: 0.15),
+              foregroundColor: context.colorScheme.primary,
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: Text(
-                state.currentUser?.name ?? context.l10n.common_anonymous_title,
-                style: AppTextStyle.subtitle1
-                    .copyWith(color: context.colorScheme.textPrimary),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    state.currentUser?.name ??
+                        context.l10n.common_anonymous_title,
+                    style: AppTextStyle.subtitle1
+                        .copyWith(color: context.colorScheme.textPrimary),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle ?? context.l10n.edit_profile_screen_title,
+                    style: AppTextStyle.body2
+                        .copyWith(color: context.colorScheme.textSecondary),
+                  ),
+                ],
               ),
-            )
+            ),
+            Icon(
+              CupertinoIcons.chevron_right,
+              size: 18,
+              color: context.colorScheme.textDisabled,
+            ),
           ],
         ),
       ),
@@ -172,8 +198,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
+        color: context.colorScheme.containerLow,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.colorScheme.outline),
       ),
       child: Column(
         children: [
@@ -283,8 +309,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
+          color: context.colorScheme.containerLow,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: context.colorScheme.outline),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
