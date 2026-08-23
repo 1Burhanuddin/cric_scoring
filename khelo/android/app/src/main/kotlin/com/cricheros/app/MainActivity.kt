@@ -1,4 +1,4 @@
-package com.canopas.khelo
+package com.cricheros.app
 
 import io.flutter.embedding.android.FlutterActivity
 
