@@ -14,9 +14,12 @@ dependencies:
   shared_preferences: ^2.3.2
   collection: any
 
-  # storage (matches, innings, ball_scores, tournaments, leaderboard still use
-  # Firestore pending Stage 2/3 of the Postgres migration; auth/users/teams/
-  # file uploads now go through the FastAPI backend via ApiClient instead)
+  # Supabase (auth, Postgres via PostgREST, storage, realtime) - the backend
+  # for everything except the domains not yet migrated off Firestore.
+  supabase_flutter: ^2.8.0
+
+  # storage (tournaments/leaderboard/contact_support still use Firestore -
+  # see cric_scoring issues #3/#4; everything else now goes through Supabase)
   cloud_firestore: ^5.4.3
   firebase_messaging: ^15.0.2
 

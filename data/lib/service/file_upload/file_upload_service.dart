@@ -1,19 +1,22 @@
 import 'dart:io';
 
-import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 
-import '../../api/network/api_client.dart';
+import '../../api/network/supabase_client_provider.dart';
 import '../../errors/app_error.dart';
 
 final fileUploadServiceProvider = Provider(
-  (ref) => FileUploadService(ref.read(apiClientProvider)),
+  (ref) => FileUploadService(ref.read(supabaseClientProvider)),
 );
 
-class FileUploadService {
-  final ApiClient _api;
+const _bucket = 'images';
 
-  FileUploadService(this._api);
+class FileUploadService {
+  final SupabaseClient _supabase;
+
+  FileUploadService(this._supabase);
 
   Future<String> uploadProfileImage({
     required String filePath,
@@ -25,29 +28,21 @@ class FileUploadService {
     }
 
     try {
-      final contentType = _contentTypeFor(filePath);
-      final presign = await _api.post(
-        '/uploads/presign',
-        data: {
-          'path': uploadPath,
-          'filename': filePath.split(Platform.pathSeparator).last,
-          'content_type': contentType,
-        },
-      ) as Map<String, dynamic>;
+      // uploadPath comes in as "images/<uid>/..." (StorageConst.*UploadPath
+      // helpers) - "images" here is the Supabase Storage *bucket* itself, so
+      // strip that leading segment to avoid double-nesting, and so the RLS
+      // policy's "first folder = auth.uid()" check lines up correctly.
+      final objectPrefix = uploadPath.startsWith('$_bucket/') ? uploadPath.substring(_bucket.length + 1) : uploadPath;
+      final extension = filePath.contains('.') ? filePath.split('.').last : 'jpg';
+      final objectPath = '$objectPrefix/${const Uuid().v4()}.$extension';
 
-      final uploadUrl = presign['upload_url'] as String;
-      final publicUrl = presign['public_url'] as String;
+      await _supabase.storage.from(_bucket).upload(
+            objectPath,
+            file,
+            fileOptions: FileOptions(contentType: _contentTypeFor(extension)),
+          );
 
-      // Uses a bare Dio instance (no interceptors) - this PUT goes straight to
-      // R2's presigned URL, not our API, and must not carry our JWT bearer
-      // token (R2 authenticates purely via the presigned query signature).
-      await Dio().put(
-        uploadUrl,
-        data: await file.readAsBytes(),
-        options: Options(headers: {'Content-Type': contentType}),
-      );
-
-      return publicUrl;
+      return _supabase.storage.from(_bucket).getPublicUrl(objectPath);
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -55,15 +50,18 @@ class FileUploadService {
 
   Future<void> deleteUploadedImage(String imgUrl) async {
     try {
-      await _api.post('/uploads/delete', data: {'url': imgUrl});
+      final marker = '/object/public/$_bucket/';
+      final index = imgUrl.indexOf(marker);
+      if (index == -1) return;
+      final objectPath = Uri.decodeFull(imgUrl.substring(index + marker.length));
+      await _supabase.storage.from(_bucket).remove([objectPath]);
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
   }
 
-  String _contentTypeFor(String filePath) {
-    final extension = filePath.split('.').last.toLowerCase();
-    switch (extension) {
+  String _contentTypeFor(String extension) {
+    switch (extension.toLowerCase()) {
       case 'png':
         return 'image/png';
       case 'webp':

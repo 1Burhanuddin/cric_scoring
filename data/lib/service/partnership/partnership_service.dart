@@ -1,60 +1,50 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../api/network/api_client.dart';
+import '../../api/network/supabase_client_provider.dart';
 import '../../api/partnership/partnership_model.dart';
 import '../../errors/app_error.dart';
 
 final partnershipServiceProvider = Provider(
-  (ref) => PartnershipService(ref.read(apiClientProvider)),
+  (ref) => PartnershipService(ref.read(supabaseClientProvider)),
 );
 
 class PartnershipService {
-  final ApiClient _api;
+  final SupabaseClient _supabase;
 
-  PartnershipService(this._api);
+  PartnershipService(this._supabase);
 
   String get generatePartnershipId => const Uuid().v4().replaceAll('-', '');
 
   Future<String> updatePartnership(PartnershipModel partnership) async {
     try {
       final id = partnership.id.isNotEmpty ? partnership.id : generatePartnershipId;
-      final response = await _api.put(
-        '/partnerships/$id',
-        data: {
-          'match_id': partnership.match_id,
-          'inning_id': partnership.inning_id,
-          'player_ids': partnership.player_ids,
-          'players': partnership.players
-              .map((p) => {
-                    'player_id': p.player_id,
-                    'runs': p.runs,
-                    'ball_faced': p.ball_faced,
-                    'fours': p.fours,
-                    'sixes': p.sixes,
-                  })
-              .toList(),
-          'runs': partnership.runs,
-          'extras': partnership.extras,
-          'ball_faced': partnership.ball_faced,
-          'start_over': partnership.start_over,
-          'end_over': partnership.end_over,
-        },
-      );
-      return (response as Map<String, dynamic>)['id'] as String;
+      await _supabase.from('partnerships').upsert({
+        'id': id,
+        'match_id': partnership.match_id,
+        'inning_id': partnership.inning_id,
+        'player_ids': partnership.player_ids,
+        'players': partnership.players.map((p) => p.toJson()).toList(),
+        'runs': partnership.runs,
+        'extras': partnership.extras,
+        'ball_faced': partnership.ball_faced,
+        'start_over': partnership.start_over,
+        'end_over': partnership.end_over,
+      });
+      return id;
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
   }
 
-  /// No realtime channel yet - emits a single snapshot. See BallScoreService
-  /// for the same caveat during live scoring.
-  Stream<List<PartnershipModel>> streamPartnershipByMatches(String matchId) async* {
+  Stream<List<PartnershipModel>> streamPartnershipByMatches(String matchId) {
     try {
-      final response = await _api.get('/partnerships/by-match/$matchId');
-      yield (response as List)
-          .map((json) => PartnershipModel.fromJson(json as Map<String, dynamic>))
-          .toList();
+      return _supabase
+          .from('partnerships')
+          .stream(primaryKey: ['id'])
+          .eq('match_id', matchId)
+          .map((rows) => rows.map(_partnershipFromRow).toList());
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -62,9 +52,24 @@ class PartnershipService {
 
   Future<void> deletePartnership(String partnershipId) async {
     try {
-      await _api.delete('/partnerships/$partnershipId');
+      await _supabase.from('partnerships').delete().eq('id', partnershipId);
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
   }
+
+  PartnershipModel _partnershipFromRow(Map<String, dynamic> row) => PartnershipModel(
+        id: row['id'] as String,
+        match_id: row['match_id'] as String,
+        inning_id: row['inning_id'] as String,
+        player_ids: ((row['player_ids'] as List?) ?? const []).cast<String>(),
+        players: ((row['players'] as List?) ?? const [])
+            .map((p) => PartnershipPlayer.fromJson(p as Map<String, dynamic>))
+            .toList(),
+        runs: row['runs'] as int,
+        extras: row['extras'] as int,
+        ball_faced: row['ball_faced'] as int,
+        start_over: (row['start_over'] as num).toDouble(),
+        end_over: (row['end_over'] as num).toDouble(),
+      );
 }

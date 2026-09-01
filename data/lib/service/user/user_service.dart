@@ -1,37 +1,48 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../api/network/api_client.dart';
+import '../../api/network/supabase_client_provider.dart';
 import '../../api/user/user_models.dart';
 import '../../errors/app_error.dart';
 import '../../utils/dummy_deactivated_account.dart';
 
 final userServiceProvider = Provider((ref) {
-  return UserService(ref.read(apiClientProvider));
+  return UserService(ref.read(supabaseClientProvider));
 });
 
 class UserService {
-  final ApiClient _api;
+  final SupabaseClient _supabase;
 
-  UserService(this._api);
+  UserService(this._supabase);
 
   Future<UserModel?> getUser(String id) async {
     try {
-      final response = await _api.get('/users/$id');
-      if (response == null) return null;
-      return UserModel.fromJson(response as Map<String, dynamic>);
-    } on AppError catch (error) {
-      if (error.statusCode == '404') return null;
-      rethrow;
+      final row = await _supabase.from('users').select().eq('id', id).maybeSingle();
+      if (row == null) return null;
+      return UserModel.fromJson(row);
+    } catch (error, stack) {
+      throw AppError.fromError(error, stack);
     }
+  }
+
+  /// The `public.users` row for a freshly-signed-up account is created by
+  /// the on_auth_user_created trigger (supabase/migrations), which runs
+  /// server-side as part of the auth signup itself - this just reads it
+  /// back, with one short retry in case that hasn't committed yet.
+  Future<UserModel> getOrCreateProfile(String userId, {String? phone}) async {
+    var user = await getUser(userId);
+    if (user == null) {
+      await Future.delayed(const Duration(milliseconds: 300));
+      user = await getUser(userId);
+    }
+    return user ?? UserModel(id: userId, phone: phone);
   }
 
   Future<List<UserModel>> getUsersByIds(List<String> ids) async {
     if (ids.isEmpty) return [];
     try {
-      final response = await _api.get('/users', query: {'ids': ids});
-      final users = (response as List)
-          .map((json) => UserModel.fromJson(json as Map<String, dynamic>))
-          .toList();
+      final rows = await _supabase.from('users').select().inFilter('id', ids);
+      final users = rows.map((row) => UserModel.fromJson(row)).toList();
 
       final foundIds = users.map((u) => u.id).toSet();
       final missingIds = ids.where((id) => !foundIds.contains(id));
@@ -43,23 +54,25 @@ class UserService {
     }
   }
 
-  /// No realtime channel for user profiles yet (Stage 2 adds websockets for
-  /// the live-scoring domains first). This emits a single snapshot rather
-  /// than live updates - callers still get a Stream so the UI doesn't change.
-  Stream<UserModel> streamUserById(String id) async* {
+  Stream<UserModel> streamUserById(String id) {
     try {
-      final user = await getUser(id);
-      yield user ?? deActiveDummyUserAccount(id);
+      return _supabase
+          .from('users')
+          .stream(primaryKey: ['id'])
+          .eq('id', id)
+          .map((rows) => rows.isEmpty ? deActiveDummyUserAccount(id) : UserModel.fromJson(rows.first));
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
   }
 
-  /// See streamUserById - single snapshot, not live, until Stage 2.
-  Stream<List<UserStat>?> streamUserStats(String userId) async* {
+  Stream<List<UserStat>?> streamUserStats(String userId) {
     try {
-      final stats = await _fetchUserStats(userId);
-      yield stats.isEmpty ? null : stats;
+      return _supabase
+          .from('user_stats')
+          .stream(primaryKey: ['id'])
+          .eq('user_id', userId)
+          .map((rows) => rows.isEmpty ? null : rows.map((r) => UserStat.fromJson(r)).toList());
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -67,39 +80,36 @@ class UserService {
 
   Future<UserStat?> getUserStats(String userId, UserStatType type) async {
     try {
-      final stats = await _fetchUserStats(userId);
-      for (final stat in stats) {
-        if (stat.type == type) return stat;
-      }
-      return null;
+      final row = await _supabase
+          .from('user_stats')
+          .select()
+          .eq('user_id', userId)
+          .eq('type', type.name)
+          .maybeSingle();
+      return row == null ? null : UserStat.fromJson(row);
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
   }
 
-  Future<List<UserStat>> _fetchUserStats(String userId) async {
-    final response = await _api.get('/users/$userId/stats');
-    return (response as List)
-        .map((json) => UserStat.fromJson(json as Map<String, dynamic>))
-        .toList();
-  }
-
   Future<void> updateUser(UserModel user) async {
     try {
-      await _api.patch(
-        '/users/me',
-        data: {
-          if (user.name != null) 'name': user.name,
-          if (user.location != null) 'location': user.location,
-          if (user.dob != null) 'dob': user.dob!.toIso8601String().split('T').first,
-          if (user.email != null) 'email': user.email,
-          if (user.profile_img_url != null) 'profile_img_url': user.profile_img_url,
-          if (user.gender != null) 'gender': user.gender!.value,
-          if (user.player_role != null) 'player_role': user.player_role!.value,
-          if (user.batting_style != null) 'batting_style': user.batting_style!.value,
-          if (user.bowling_style != null) 'bowling_style': user.bowling_style!.value,
-        },
-      );
+      final userId = _supabase.auth.currentUser?.id;
+      if (userId == null) throw const SomethingWentWrongError();
+
+      await _supabase.from('users').update({
+        if (user.name != null) 'name': user.name,
+        if (user.name != null) 'name_lowercase': user.name!.toLowerCase(),
+        if (user.location != null) 'location': user.location,
+        if (user.dob != null) 'dob': user.dob!.toIso8601String().split('T').first,
+        if (user.email != null) 'email': user.email,
+        if (user.profile_img_url != null) 'profile_img_url': user.profile_img_url,
+        if (user.gender != null) 'gender': user.gender!.value,
+        if (user.player_role != null) 'player_role': user.player_role!.value,
+        if (user.batting_style != null) 'batting_style': user.batting_style!.value,
+        if (user.bowling_style != null) 'bowling_style': user.bowling_style!.value,
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', userId);
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -107,16 +117,15 @@ class UserService {
 
   Future<void> updateUserStats(String userId, UserStat stats) async {
     try {
-      await _api.put(
-        '/users/$userId/stats',
-        data: {
-          'matches': stats.matches,
-          'type': (stats.type ?? UserStatType.other).name,
-          'batting': stats.batting.toJson(),
-          'bowling': stats.bowling.toJson(),
-          'fielding': stats.fielding.toJson(),
-        },
-      );
+      await _supabase.from('user_stats').upsert({
+        'user_id': userId,
+        'type': (stats.type ?? UserStatType.other).name,
+        'matches': stats.matches,
+        'batting': stats.batting.toJson(),
+        'bowling': stats.bowling.toJson(),
+        'fielding': stats.fielding.toJson(),
+        'updated_at': DateTime.now().toUtc().toIso8601String(),
+      }, onConflict: 'user_id,type');
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -128,13 +137,13 @@ class UserService {
     String? lastUserId,
   }) async {
     try {
-      final response = await _api.get(
-        '/users/search/by-name',
-        query: {'q': searchKey, 'limit': limit.toString()},
-      );
-      return (response as List)
-          .map((json) => UserModel.fromJson(json as Map<String, dynamic>))
-          .toList();
+      final rows = await _supabase
+          .from('users')
+          .select()
+          .ilike('name_lowercase', '${searchKey.toLowerCase()}%')
+          .order('id')
+          .limit(limit);
+      return rows.map((row) => UserModel.fromJson(row)).toList();
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -145,9 +154,36 @@ class UserService {
     bool notifications,
   ) async {
     try {
-      await _api.patch('/users/me/notifications', data: {'notifications': notifications});
+      await _supabase.from('users').update({'notifications': notifications}).eq('id', id);
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
+  }
+
+  // ---- devices (FCM tokens) ----------------------------------------------
+
+  Future<void> registerDeviceRow(ApiSession session) async {
+    try {
+      await _supabase.from('user_devices').upsert({
+        'user_id': session.user_id,
+        'device_type': session.device_type,
+        'device_id': session.device_id,
+        'device_name': session.device_name,
+        'app_version': session.app_version,
+        'os_version': session.os_version,
+      }, onConflict: 'user_id,device_id');
+    } catch (error, stack) {
+      throw AppError.fromError(error, stack);
+    }
+  }
+
+  Future<void> updateDeviceFcmToken(String deviceId, String fcmToken) async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) return;
+    await _supabase
+        .from('user_devices')
+        .update({'device_fcm_token': fcmToken})
+        .eq('user_id', userId)
+        .eq('device_id', deviceId);
   }
 }

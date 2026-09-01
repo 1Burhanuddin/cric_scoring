@@ -19,16 +19,6 @@ final rawDioProvider = Provider((ref) {
     ..options.receiveTimeout = const Duration(seconds: 30);
 });
 
-/// Separate Dio instance (and provider) from [rawDioProvider] so the JWT auth
-/// interceptor added by ApiClient never leaks the access token to unrelated
-/// callers sharing rawDioProvider (e.g. DeviceService's ip-api.com lookup).
-final apiDioProvider = Provider((ref) {
-  return Dio()
-    ..options.connectTimeout = const Duration(seconds: 30)
-    ..options.sendTimeout = const Duration(seconds: 30)
-    ..options.receiveTimeout = const Duration(seconds: 30);
-});
-
 extension HttpExtensions on http.Client {
   Future<http.Response> req(Endpoint endpoint) async {
     final request = http.Request(

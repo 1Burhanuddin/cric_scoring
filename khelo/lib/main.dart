@@ -1,5 +1,4 @@
 import 'package:cricheros_data/storage/provider/preferences_provider.dart';
-import 'package:cricheros_data/utils/constant/firestore_constant.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -9,15 +8,16 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cricheros/ui/app.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'firebase_options.dart';
 
-// CricHeros backend (FastAPI + Postgres). Override per-environment with
-// `--dart-define=API_BASE_URL=https://api.cricheros.app`. The Android emulator
-// reaches a host-machine docker-compose backend via 10.0.2.2, not localhost.
-const _baseUrl = String.fromEnvironment(
-  'API_BASE_URL',
-  defaultValue: 'http://10.0.2.2:8001',
-);
+// CricHeros backend: Supabase (Postgres + Auth + Realtime). The anon key is
+// meant to be public/embedded in the client - it's useless without the RLS
+// policies in supabase/migrations, which are what actually gate access.
+const _supabaseUrl = 'https://dyzujyzcnnujzkdkxufe.supabase.co';
+const _supabaseAnonKey =
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImR5enVqeXpjbm51anprZGt4dWZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgyMzI4OTgsImV4cCI6MjEwMzgwODg5OH0.MqNkAW0agF7OwAnzaj2ldsTO4WHH_zHtBH7RJBszqvQ';
+
 const appBaseUrl = 'https://khelo.canopas.com';
 
 void main() async {
@@ -44,11 +44,7 @@ Future<ProviderContainer> _initContainer() async {
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
-  DataConfig.init(
-    DataConfig(
-      apiBaseUrl: _baseUrl,
-    ),
-  );
+  await Supabase.initialize(url: _supabaseUrl, publishableKey: _supabaseAnonKey);
 
   if (!kDebugMode) {
     await FirebaseCrashlytics.instance.setCrashlyticsCollectionEnabled(true);
