@@ -421,6 +421,19 @@ class MatchService {
     }
   }
 
+  /// Tournaments store their matches via matches.tournament_id (a plain FK)
+  /// rather than an embedded id array on the tournament row - used to
+  /// compute a tournament's status from its matches' statuses.
+  Future<List<MatchModel>> getMatchesByTournamentId(String tournamentId) async {
+    try {
+      final rows = await _supabase.from('matches').select(_matchSelect).eq('tournament_id', tournamentId);
+      final matches = rows.map(_matchFromRow).toList();
+      return Future.wait(matches.map(_hydrateTeamsOnly));
+    } catch (error, stack) {
+      throw AppError.fromError(error, stack);
+    }
+  }
+
   Stream<List<MatchModel>> streamMatchesByIds(List<String> matchIds) {
     if (matchIds.isEmpty) return Stream.value([]);
     return _pollMatches(() async {

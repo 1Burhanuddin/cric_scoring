@@ -1,74 +1,76 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../api/ball_score/ball_score_model.dart';
 import '../../api/match/match_model.dart';
+import '../../api/network/supabase_client_provider.dart';
 import '../../api/team/team_model.dart';
 import '../../api/tournament/tournament_model.dart';
 import '../../api/user/user_models.dart';
 import '../../errors/app_error.dart';
-import '../../utils/constant/firestore_constant.dart';
 import '../match/match_service.dart';
 import '../team/team_service.dart';
 import '../user/user_service.dart';
 
 final tournamentServiceProvider = Provider(
   (ref) => TournamentService(
-    FirebaseFirestore.instance,
+    ref.read(supabaseClientProvider),
     ref.read(teamServiceProvider),
     ref.read(matchServiceProvider),
     ref.read(userServiceProvider),
   ),
 );
 
+const _tournamentSelect = '*, tournament_teams(team_id), tournament_members(user_id, role)';
+
 class TournamentService {
-  final FirebaseFirestore _firestore;
+  final SupabaseClient _supabase;
   final TeamService _teamService;
   final MatchService _matchService;
   final UserService _userService;
 
   TournamentService(
-    this._firestore,
+    this._supabase,
     this._teamService,
     this._matchService,
     this._userService,
   );
 
-  CollectionReference<TournamentModel> get _tournamentCollection =>
-      _firestore.collection(FireStoreConst.tournamentCollection).withConverter(
-            fromFirestore: TournamentModel.fromFireStore,
-            toFirestore: (TournamentModel tournament, _) => tournament.toJson(),
-          );
+  String get generateTournamentId => const Uuid().v4().replaceAll('-', '');
 
-  CollectionReference<TournamentTeamStat> _tournamentTeamStatCollection(
-    String tournamentId,
-  ) =>
-      _tournamentCollection
-          .doc(tournamentId)
-          .collection(FireStoreConst.tournamentTeamStatsCollection)
-          .withConverter(
-            fromFirestore: TournamentTeamStat.fromFireStore,
-            toFirestore: (tournamentTeamStat, _) => tournamentTeamStat.toJson(),
-          );
-
-  CollectionReference<PlayerKeyStat> _tournamentPlayerKeyStatCollection(
-    String tournamentId,
-  ) =>
-      _tournamentCollection
-          .doc(tournamentId)
-          .collection(FireStoreConst.tournamentPlayerKeyStatsCollection)
-          .withConverter(
-            fromFirestore: PlayerKeyStat.fromFireStore,
-            toFirestore: (tournamentKeyStat, _) => tournamentKeyStat.toJson(),
-          );
-
-  String get generateTournamentId => _tournamentCollection.doc().id;
-
+  /// Create-or-replace: mirrors the app's Firestore-era `.set(merge:true)`
+  /// flow - the client pre-generates a tournament id and sends the full
+  /// member/team list, so this fully replaces tournament_members and
+  /// tournament_teams on every call (same pattern as TeamService.updateTeam).
   Future<void> createTournament(TournamentModel tournament) async {
     try {
-      await _tournamentCollection
-          .doc(tournament.id)
-          .set(tournament, SetOptions(merge: true));
+      await _supabase.from('tournaments').upsert({
+        'id': tournament.id,
+        'name': tournament.name,
+        'profile_img_url': tournament.profile_img_url,
+        'banner_img_url': tournament.banner_img_url,
+        'type': tournament.type.value,
+        'created_by': tournament.created_by,
+        'start_date': tournament.start_date.toUtc().toIso8601String(),
+        'end_date': tournament.end_date.toUtc().toIso8601String(),
+      });
+
+      await _supabase.from('tournament_members').delete().eq('tournament_id', tournament.id);
+      if (tournament.members.isNotEmpty) {
+        await _supabase.from('tournament_members').insert(
+              tournament.members
+                  .map((m) => {'tournament_id': tournament.id, 'user_id': m.id, 'role': m.role.name})
+                  .toList(),
+            );
+      }
+
+      if (tournament.team_ids.isNotEmpty) {
+        await _supabase.from('tournament_teams').delete().eq('tournament_id', tournament.id);
+        await _supabase.from('tournament_teams').insert(
+              tournament.team_ids.map((teamId) => {'tournament_id': tournament.id, 'team_id': teamId}).toList(),
+            );
+      }
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -76,11 +78,8 @@ class TournamentService {
 
   Future<TournamentModel> getTournamentById(String id) async {
     try {
-      final snapshot = await _tournamentCollection.doc(id).get();
-      final tournament = snapshot.data();
-      if (tournament != null) {
-        return tournament;
-      } else {
+      final row = await _supabase.from('tournaments').select(_tournamentSelect).eq('id', id).maybeSingle();
+      if (row == null) {
         return TournamentModel(
           id: '',
           name: '',
@@ -90,6 +89,7 @@ class TournamentService {
           end_date: DateTime.now(),
         );
       }
+      return _tournamentFromRow(row);
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -99,50 +99,29 @@ class TournamentService {
     String? lastMatchId,
     int limit = 10,
   }) async {
-    final DateTime now = DateTime.now();
-    final DateTime thirtyDaysAgo = now.subtract(Duration(days: 30));
-
-    final Timestamp timestamp = Timestamp.fromDate(thirtyDaysAgo);
-
-    var query = _tournamentCollection
-        .where(Filter(FireStoreConst.startDate, isGreaterThan: timestamp))
-        .orderBy(FireStoreConst.startDate);
-
-    if (lastMatchId != null) {
-      query = query.startAfter([lastMatchId]);
+    try {
+      final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30)).toUtc();
+      final rows = await _supabase
+          .from('tournaments')
+          .select(_tournamentSelect)
+          .gt('start_date', thirtyDaysAgo.toIso8601String())
+          .order('start_date')
+          .limit(limit);
+      final tournaments = rows.map(_tournamentFromRow).toList();
+      return Future.wait(tournaments.map(_withComputedStatus));
+    } catch (error, stack) {
+      throw AppError.fromError(error, stack);
     }
-
-    final snapshot = await query.limit(limit).get();
-
-    return Future.wait(
-      snapshot.docs.map(
-        (e) async {
-          var tournament = e.data();
-          final matchIds = tournament.match_ids;
-          if (matchIds.isNotEmpty) {
-            final matches = await _matchService.getMatchesByIds(matchIds);
-            final status = tournament.getTournamentStatus(matches);
-            tournament = tournament.copyWith(status: status);
-          }
-
-          return tournament;
-        },
-      ),
-    );
   }
 
   Stream<List<TournamentTeamStat>> streamTeamStats(String tournamentId) {
-    return _tournamentTeamStatCollection(tournamentId)
-        .snapshots()
-        .asyncMap((snapshot) async {
-      return await Future.wait(
-        snapshot.docs.map((doc) async {
-          final data = doc.data();
-          final team = await _teamService.getTeamById(data.team_id);
-          return data.copyWith(team: team);
-        }),
-      );
-    }).handleError((error, stack) => throw AppError.fromError(error, stack));
+    return _poll(() async {
+      final rows = await _supabase.from('tournament_team_stats').select().eq('tournament_id', tournamentId);
+      return Future.wait(rows.map((row) async {
+        final team = await _teamService.getTeamById(row['team_id'] as String);
+        return _teamStatFromRow(row).copyWith(team: team);
+      }));
+    });
   }
 
   Future<TournamentTeamStat> getTeamStatByTeamId(
@@ -150,27 +129,29 @@ class TournamentService {
     TeamModel team,
   ) async {
     try {
-      final snapshot =
-          await _tournamentTeamStatCollection(tournamentId).doc(team.id).get();
-      return snapshot.data()?.copyWith(team: team) ??
-          TournamentTeamStat(team_id: team.id, team: team);
+      final row = await _supabase
+          .from('tournament_team_stats')
+          .select()
+          .eq('tournament_id', tournamentId)
+          .eq('team_id', team.id)
+          .maybeSingle();
+      return row == null
+          ? TournamentTeamStat(team_id: team.id, team: team)
+          : _teamStatFromRow(row).copyWith(team: team);
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
   }
 
   Stream<List<PlayerKeyStat>> streamPlayerKeyStats(String tournamentId) {
-    return _tournamentPlayerKeyStatCollection(tournamentId)
-        .snapshots()
-        .asyncMap((snapshot) async {
-      return await Future.wait(
-        snapshot.docs.map((doc) async {
-          final data = doc.data();
-          final player = await _userService.getUser(data.player_id);
-          return player == null ? data : data.copyWith(player: player);
-        }),
-      );
-    }).handleError((error, stack) => throw AppError.fromError(error, stack));
+    return _poll(() async {
+      final rows = await _supabase.from('tournament_player_key_stats').select().eq('tournament_id', tournamentId);
+      return Future.wait(rows.map((row) async {
+        final player = await _userService.getUser(row['player_id'] as String);
+        final stat = _playerKeyStatFromRow(row);
+        return player == null ? stat : stat.copyWith(player: player);
+      }));
+    });
   }
 
   Future<PlayerKeyStat> getPlayerKeyStatByPlayerId(
@@ -178,68 +159,82 @@ class TournamentService {
     UserModel player,
   ) async {
     try {
-      final snapshot = await _tournamentPlayerKeyStatCollection(tournamentId)
-          .doc(player.id)
-          .get();
-      return snapshot.data()?.copyWith(player: player) ??
-          PlayerKeyStat(player_id: player.id, teamName: '', player: player);
+      final row = await _supabase
+          .from('tournament_player_key_stats')
+          .select()
+          .eq('tournament_id', tournamentId)
+          .eq('player_id', player.id)
+          .maybeSingle();
+      return row == null
+          ? PlayerKeyStat(player_id: player.id, teamName: '', player: player)
+          : _playerKeyStatFromRow(row).copyWith(player: player);
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
   }
 
-  Future<int> getUserOwnedTournamentsCount(String userId) {
-    final currentPlayer = TournamentMember(
-      id: userId,
-      role: TournamentMemberRole.organizer,
-    );
-
-    final filter = Filter.or(
-      Filter(FireStoreConst.createdBy, isEqualTo: userId),
-      Filter(FireStoreConst.members, arrayContains: currentPlayer.toJson()),
-    );
-    return _tournamentCollection.where(filter).count().get().then((snapshot) {
-      return snapshot.count ?? 0;
-    }).catchError((error, stack) => throw AppError.fromError(error, stack));
+  Future<int> getUserOwnedTournamentsCount(String userId) async {
+    try {
+      final ownedRows = await _supabase.from('tournaments').select('id').eq('created_by', userId);
+      final organizerRows = await _supabase
+          .from('tournament_members')
+          .select('tournament_id')
+          .eq('user_id', userId)
+          .eq('role', TournamentMemberRole.organizer.name);
+      final ids = <String>{
+        ...ownedRows.map((r) => r['id'] as String),
+        ...organizerRows.map((r) => r['tournament_id'] as String),
+      };
+      return ids.length;
+    } catch (error, stack) {
+      throw AppError.fromError(error, stack);
+    }
   }
 
-  /// Tournaments aren't migrated to Postgres yet (out of scope for the
-  /// matches migration pass) and Firestore access is unavailable now that
-  /// the app no longer signs into Firebase Auth. Since there's no tournament
-  /// data anywhere yet either way, this returns an accurate empty result
-  /// rather than a Firestore permission-denied error - unblocks the home
-  /// screen's combined matches+tournaments+leaderboard stream. Revert to the
-  /// Firestore-backed version (or a real Postgres one) once tournaments get
-  /// their own migration pass.
-  Stream<List<TournamentModel>> streamActiveTournaments() {
-    return Stream.value(const <TournamentModel>[]);
+  /// "Active" = currently running or still to come (end_date hasn't passed
+  /// yet) - matches MatchService's streamActiveRunningMatches/
+  /// streamUpcomingMatches pattern for the home feed. No hydrated teams here
+  /// (same as the original Firestore getTournaments/searchTournament, which
+  /// only hydrate `.teams` in the single-tournament detail view).
+  Stream<List<TournamentModel>> streamActiveTournaments({int limit = 10}) {
+    return _poll(() async {
+      final now = DateTime.now().toUtc();
+      final rows = await _supabase
+          .from('tournaments')
+          .select(_tournamentSelect)
+          .gte('end_date', now.toIso8601String())
+          .order('start_date')
+          .limit(limit);
+      final tournaments = rows.map(_tournamentFromRow).toList();
+      return Future.wait(tournaments.map(_withComputedStatus));
+    });
   }
 
   Stream<List<TournamentModel>> streamCurrentUserRelatedMatches(String userId) {
-    final currentMember = TournamentMember(id: userId);
+    return _poll(() async {
+      final ownedRows = await _supabase.from('tournaments').select(_tournamentSelect).eq('created_by', userId);
+      final memberRows = await _supabase
+          .from('tournament_members')
+          .select('tournament_id, tournaments!inner($_tournamentSelect)')
+          .eq('user_id', userId)
+          .inFilter('role', [TournamentMemberRole.organizer.name, TournamentMemberRole.admin.name]);
 
-    final memberContains = [
-      currentMember.copyWith(role: TournamentMemberRole.organizer).toJson(),
-      currentMember.copyWith(role: TournamentMemberRole.admin).toJson(),
-    ];
-    final filter = Filter.or(
-      Filter(FireStoreConst.createdBy, isEqualTo: userId),
-      Filter(FireStoreConst.members, arrayContainsAny: memberContains),
-    );
-
-    return _tournamentCollection
-        .where(filter)
-        .snapshots()
-        .map((event) => event.docs.map((e) => e.data()).toList())
-        .handleError((error, stack) => throw AppError.fromError(error, stack));
+      final byId = <String, Map<String, dynamic>>{};
+      for (final row in ownedRows) {
+        byId[row['id'] as String] = row;
+      }
+      for (final row in memberRows) {
+        final t = row['tournaments'] as Map<String, dynamic>;
+        byId[t['id'] as String] = t;
+      }
+      return byId.values.map(_tournamentFromRow).toList();
+    });
   }
 
   Stream<TournamentModel> streamTournamentById(String tournamentId) {
-    return _tournamentCollection
-        .doc(tournamentId)
-        .snapshots()
-        .asyncMap((snapshot) async {
-      if (snapshot.data() == null) {
+    return _poll1(() async {
+      final row = await _supabase.from('tournaments').select(_tournamentSelect).eq('id', tournamentId).maybeSingle();
+      if (row == null) {
         return TournamentModel(
           id: tournamentId,
           name: '',
@@ -248,30 +243,24 @@ class TournamentService {
           start_date: DateTime.now(),
           end_date: DateTime.now().add(const Duration(days: 1)),
         );
-      } else {
-        var tournament = snapshot.data()!;
-        final teamIds = tournament.team_ids;
-
-        if (teamIds.isNotEmpty) {
-          final teams = await _teamService.getTeamsByIds(teamIds);
-          tournament = tournament.copyWith(teams: teams);
-        }
-
-        if (tournament.members.isNotEmpty) {
-          final memberIds = tournament.members.map((e) => e.id).toList();
-          final users = await _userService.getUsersByIds(memberIds);
-
-          final members = tournament.members.map((member) {
-            final user = users.firstWhere((element) => element.id == member.id);
-            return member.copyWith(user: user);
-          }).toList();
-
-          tournament = tournament.copyWith(members: members);
-        }
-
-        return tournament;
       }
-    }).handleError((error, stack) => throw AppError.fromError(error, stack));
+
+      var tournament = _tournamentFromRow(row);
+      if (tournament.team_ids.isNotEmpty) {
+        final teams = await _teamService.getTeamsByIds(tournament.team_ids);
+        tournament = tournament.copyWith(teams: teams);
+      }
+      if (tournament.members.isNotEmpty) {
+        final memberIds = tournament.members.map((e) => e.id).toList();
+        final users = await _userService.getUsersByIds(memberIds);
+        final members = tournament.members.map((member) {
+          final user = users.firstWhere((element) => element.id == member.id);
+          return member.copyWith(user: user);
+        }).toList();
+        tournament = tournament.copyWith(members: members);
+      }
+      return tournament;
+    });
   }
 
   Future<void> _updateTeamStats(
@@ -279,9 +268,15 @@ class TournamentService {
     TournamentTeamStat teamStat,
   ) async {
     try {
-      final teamStatRef =
-          _tournamentTeamStatCollection(tournamentId).doc(teamStat.team_id);
-      await teamStatRef.set(teamStat, SetOptions(merge: true));
+      await _supabase.from('tournament_team_stats').upsert({
+        'tournament_id': tournamentId,
+        'team_id': teamStat.team_id,
+        'points': teamStat.points,
+        'wins': teamStat.wins,
+        'losses': teamStat.losses,
+        'nrr': teamStat.nrr,
+        'played_matches': teamStat.played_matches,
+      }, onConflict: 'tournament_id,team_id');
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -292,9 +287,12 @@ class TournamentService {
     PlayerKeyStat keyStat,
   ) async {
     try {
-      final keyStatRef = _tournamentPlayerKeyStatCollection(tournamentId)
-          .doc(keyStat.player_id);
-      await keyStatRef.set(keyStat, SetOptions(merge: true));
+      await _supabase.from('tournament_player_key_stats').upsert({
+        'tournament_id': tournamentId,
+        'player_id': keyStat.player_id,
+        'team_name': keyStat.teamName,
+        'stats': keyStat.stats.toJson(),
+      }, onConflict: 'tournament_id,player_id');
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -364,9 +362,12 @@ class TournamentService {
     List<String> teamIds,
   ) async {
     try {
-      await _tournamentCollection
-          .doc(tournamentId)
-          .update({FireStoreConst.teamIds: teamIds});
+      await _supabase.from('tournament_teams').delete().eq('tournament_id', tournamentId);
+      if (teamIds.isNotEmpty) {
+        await _supabase.from('tournament_teams').insert(
+              teamIds.map((teamId) => {'tournament_id': tournamentId, 'team_id': teamId}).toList(),
+            );
+      }
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -377,9 +378,7 @@ class TournamentService {
     String matchId,
   ) async {
     try {
-      await _tournamentCollection.doc(tournamentId).update({
-        FireStoreConst.matchIds: FieldValue.arrayRemove([matchId]),
-      });
+      await _supabase.from('matches').update({'tournament_id': null}).eq('id', matchId).eq('tournament_id', tournamentId);
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -387,9 +386,7 @@ class TournamentService {
 
   Future<void> addMatchInTournament(String tournamentId, String matchId) async {
     try {
-      await _tournamentCollection.doc(tournamentId).update({
-        FireStoreConst.matchIds: FieldValue.arrayUnion([matchId]),
-      });
+      await _supabase.from('matches').update({'tournament_id': tournamentId}).eq('id', matchId);
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -400,9 +397,12 @@ class TournamentService {
     List<TournamentMember> members,
   ) async {
     try {
-      await _tournamentCollection.doc(tournamentId).update({
-        FireStoreConst.members: members.map((e) => e.toJson()).toList(),
-      });
+      await _supabase.from('tournament_members').delete().eq('tournament_id', tournamentId);
+      if (members.isNotEmpty) {
+        await _supabase.from('tournament_members').insert(
+              members.map((m) => {'tournament_id': tournamentId, 'user_id': m.id, 'role': m.role.name}).toList(),
+            );
+      }
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -413,9 +413,7 @@ class TournamentService {
     TournamentMember member,
   ) async {
     try {
-      await _tournamentCollection.doc(tournamentId).update({
-        FireStoreConst.members: FieldValue.arrayRemove([member.toJson()]),
-      });
+      await _supabase.from('tournament_members').delete().eq('tournament_id', tournamentId).eq('user_id', member.id);
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -427,10 +425,8 @@ class TournamentService {
     List<TournamentMember> members,
   ) async {
     try {
-      await _tournamentCollection.doc(tournamentId).update({
-        FireStoreConst.createdBy: newOwnerId,
-        FireStoreConst.members: members.map((e) => e.toJson()).toList(),
-      });
+      await _supabase.from('tournaments').update({'created_by': newOwnerId}).eq('id', tournamentId);
+      await updateTournamentMembers(tournamentId, members);
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -442,38 +438,14 @@ class TournamentService {
     String? lastTournamentId,
   }) async {
     try {
-      var query = _tournamentCollection
-          .where(
-            FireStoreConst.name,
-            isGreaterThanOrEqualTo: searchKey,
-          )
-          .where(
-            FireStoreConst.name,
-            isLessThan: '${searchKey}z',
-          )
-          .orderBy(FireStoreConst.id);
-
-      if (lastTournamentId != null) {
-        query = query.startAfter([lastTournamentId]);
-      }
-      query = query.limit(limit);
-      final snapshot = await query.get();
-
-      return Future.wait(
-        snapshot.docs.map(
-          (e) async {
-            var tournament = e.data();
-            final matchIds = tournament.match_ids;
-            if (matchIds.isNotEmpty) {
-              final matches = await _matchService.getMatchesByIds(matchIds);
-              final status = tournament.getTournamentStatus(matches);
-              tournament = tournament.copyWith(status: status);
-            }
-
-            return tournament;
-          },
-        ),
-      );
+      final rows = await _supabase
+          .from('tournaments')
+          .select(_tournamentSelect)
+          .ilike('name', '$searchKey%')
+          .order('id')
+          .limit(limit);
+      final tournaments = rows.map(_tournamentFromRow).toList();
+      return Future.wait(tournaments.map(_withComputedStatus));
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
@@ -481,9 +453,74 @@ class TournamentService {
 
   Future<void> deleteTournament(String tournamentId) async {
     try {
-      await _tournamentCollection.doc(tournamentId).delete();
+      await _supabase.from('tournaments').delete().eq('id', tournamentId);
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
   }
+
+  // ---- helpers --------------------------------------------------------
+
+  /// No realtime channel for the hydrated (team/member-joined) tournament
+  /// queries yet, same gap as MatchService - emits once immediately.
+  Stream<List<T>> _poll<T>(Future<List<T>> Function() fetch) async* {
+    try {
+      yield await fetch();
+    } catch (error, stack) {
+      throw AppError.fromError(error, stack);
+    }
+  }
+
+  Stream<TournamentModel> _poll1(Future<TournamentModel> Function() fetch) async* {
+    try {
+      yield await fetch();
+    } catch (error, stack) {
+      throw AppError.fromError(error, stack);
+    }
+  }
+
+  Future<TournamentModel> _withComputedStatus(TournamentModel tournament) async {
+    final matches = await _matchService.getMatchesByTournamentId(tournament.id);
+    return tournament.copyWith(status: tournament.getTournamentStatus(matches));
+  }
+
+  TournamentModel _tournamentFromRow(Map<String, dynamic> row) {
+    final teamRows = (row['tournament_teams'] as List?) ?? const [];
+    final memberRows = (row['tournament_members'] as List?) ?? const [];
+    return TournamentModel(
+      id: row['id'] as String,
+      name: row['name'] as String,
+      profile_img_url: row['profile_img_url'] as String?,
+      banner_img_url: row['banner_img_url'] as String?,
+      type: TournamentType.values.firstWhere((e) => e.value == row['type']),
+      created_by: row['created_by'] as String,
+      created_at: row['created_at'] != null ? DateTime.parse(row['created_at'] as String) : null,
+      start_date: DateTime.parse(row['start_date'] as String),
+      end_date: DateTime.parse(row['end_date'] as String),
+      team_ids: teamRows.map((t) => (t as Map<String, dynamic>)['team_id'] as String).toList(),
+      members: memberRows
+          .map((m) => TournamentMember(
+                id: (m as Map<String, dynamic>)['user_id'] as String,
+                role: (m['role'] as String) == TournamentMemberRole.organizer.name
+                    ? TournamentMemberRole.organizer
+                    : TournamentMemberRole.admin,
+              ))
+          .toList(),
+    );
+  }
+
+  TournamentTeamStat _teamStatFromRow(Map<String, dynamic> row) => TournamentTeamStat(
+        team_id: row['team_id'] as String,
+        points: row['points'] as int,
+        wins: row['wins'] as int,
+        losses: row['losses'] as int,
+        nrr: (row['nrr'] as num).toDouble(),
+        played_matches: row['played_matches'] as int,
+      );
+
+  PlayerKeyStat _playerKeyStatFromRow(Map<String, dynamic> row) => PlayerKeyStat(
+        player_id: row['player_id'] as String,
+        teamName: row['team_name'] as String,
+        stats: UserStat.fromJson(row['stats'] as Map<String, dynamic>),
+      );
 }
