@@ -221,8 +221,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         width: Size.fromWidth(360).width,
         padding: EdgeInsets.all(16),
         decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: context.colorScheme.outline)),
+            color: context.colorScheme.containerNormal,
+            borderRadius: BorderRadius.circular(16)),
         child: Column(
           children: [
             Row(
@@ -264,8 +264,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               padding: EdgeInsets.all(8),
               decoration: BoxDecoration(
                   color: context.colorScheme.containerLow,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: context.colorScheme.outline)),
+                  borderRadius: BorderRadius.circular(6)),
               child: _leaderboardPlayerProfileView(
                   players.elementAt(rank).user, rank <= 2 ? rank + 1 : null),
             ),
@@ -397,13 +396,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         margin: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(30),
-            border: Border.all(color: context.colorScheme.outline)),
+            color: context.colorScheme.containerLow,
+            borderRadius: BorderRadius.circular(30)),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             CircleAvatar(
-              backgroundColor: context.colorScheme.containerLow,
+              // Was the exact same fill as this row's own pill background
+              // (containerLow), so the badge circle was invisible — just a
+              // floating "+" with nothing behind it. Accent-tinted instead,
+              // matching the identity-badge treatment used elsewhere (e.g.
+              // the profile header avatar).
+              backgroundColor: context.colorScheme.primary.withValues(alpha: 0.15),
               child: Icon(Icons.add, color: context.colorScheme.primary),
             ),
             const SizedBox(width: 16),

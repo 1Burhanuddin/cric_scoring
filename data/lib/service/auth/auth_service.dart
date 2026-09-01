@@ -1,81 +1,73 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../api/network/supabase_client_provider.dart';
 import '../../api/user/user_models.dart';
 import '../../errors/app_error.dart';
-import '../../extensions/string_extensions.dart';
+import '../device/device_service.dart';
+import '../user/user_service.dart';
 import '../../storage/app_preferences.dart';
 import '../../storage/provider/preferences_provider.dart';
-import '../user/user_service.dart';
-
-final firebaseAuthProvider = Provider((ref) => FirebaseAuth.instance);
 
 final authServiceProvider = Provider((ref) {
   return AuthService(
-    ref.read(firebaseAuthProvider),
+    ref.read(supabaseClientProvider),
     ref.read(userServiceProvider),
+    ref.read(deviceServiceProvider),
     ref.read(currentUserJsonPod.notifier),
     ref.read(currentUserSessionJsonPod.notifier),
   );
 });
 
 class AuthService {
-  final FirebaseAuth _auth;
+  final SupabaseClient _supabase;
   final UserService _userService;
+  final DeviceService _deviceService;
 
   final PreferenceNotifier<String?> _currentUserNotifier;
   final PreferenceNotifier<String?> _userSessionNotifier;
 
   AuthService(
-    this._auth,
+    this._supabase,
     this._userService,
+    this._deviceService,
     this._currentUserNotifier,
     this._userSessionNotifier,
-  ) {
-    _auth.authStateChanges().listen(
-      (user) {
-        if (user == null) {
-          _currentUserNotifier.state = null;
-          _userSessionNotifier.state = null;
-        }
-      },
-    );
+  );
+
+  /// Supabase's own session (JWT + refresh token) is persisted and refreshed
+  /// by the SDK itself - this is the authoritative check, not a locally
+  /// managed token the way the old custom-backend version needed.
+  bool get isSignedIn => _supabase.auth.currentSession != null;
+
+  static String _e164(String countryCode, String phoneNumber) {
+    final digits = phoneNumber.replaceAll(RegExp(r'[^0-9]'), '');
+    return countryCode.startsWith('+') ? '$countryCode$digits' : '+$countryCode$digits';
   }
 
-  Stream<User?> get user => _auth.authStateChanges();
-
+  /// Sends the OTP via Supabase Auth (SMS provider configured in the
+  /// Supabase dashboard - see Authentication > Providers > Phone). There's
+  /// no Firebase-style "auto verification completed" path, so
+  /// [onVerificationCompleted] is never invoked here - kept only so the
+  /// sign-in screen's callback wiring doesn't need to change.
   Future<void> verifyPhoneNumber({
     required String countryCode,
     required String phoneNumber,
     Function(String, int?)? onCodeSent,
-    Function(PhoneAuthCredential, UserCredential)? onVerificationCompleted,
+    Function()? onVerificationCompleted,
     Function(AppError)? onVerificationFailed,
     Function(String)? onCodeAutoRetrievalTimeout,
   }) async {
     try {
-      await _auth.verifyPhoneNumber(
-        phoneNumber: countryCode + phoneNumber,
-        verificationCompleted: (phoneAuthCredential) async {
-          final userCredential =
-              await _auth.signInWithCredential(phoneAuthCredential);
-          await _onVerificationSuccess(
-            countryCode,
-            phoneNumber,
-            userCredential,
-          );
-          onVerificationCompleted?.call(phoneAuthCredential, userCredential);
-        },
-        verificationFailed: (FirebaseAuthException e) =>
-            onVerificationFailed?.call(AppError.fromError(e, e.stackTrace)),
-        codeSent: (String verificationId, int? resendToken) =>
-            onCodeSent?.call(verificationId, resendToken),
-        codeAutoRetrievalTimeout: (verificationId) =>
-            onCodeAutoRetrievalTimeout?.call(verificationId),
-      );
+      await _supabase.auth.signInWithOtp(phone: _e164(countryCode, phoneNumber));
+      // No real verification-id concept with Supabase phone auth; pass a
+      // non-null placeholder so the OTP-entry screen's
+      // `verificationId != null` gate is satisfied.
+      onCodeSent?.call('$countryCode-$phoneNumber', null);
     } catch (error, stack) {
-      throw AppError.fromError(error, stack);
+      onVerificationFailed?.call(AppError.fromError(error, stack));
     }
   }
 
@@ -86,86 +78,72 @@ class AuthService {
     String otp,
   ) async {
     try {
-      final credential = PhoneAuthProvider.credential(
-        verificationId: verificationId,
-        smsCode: otp,
+      final response = await _supabase.auth.verifyOTP(
+        type: OtpType.sms,
+        phone: _e164(countryCode, phoneNumber),
+        token: otp,
       );
 
-      final userCredential = await _auth.signInWithCredential(credential);
-      await _onVerificationSuccess(countryCode, phoneNumber, userCredential);
+      final authUser = response.user;
+      if (authUser == null) {
+        throw const SomethingWentWrongError();
+      }
+
+      final user = await _userService.getOrCreateProfile(authUser.id, phone: authUser.phone);
+      _currentUserNotifier.state = user.toJsonString();
+
+      final deviceName = await _deviceService.deviceName;
+      final appVersion = await _deviceService.appVersion;
+      final osVersion = await _deviceService.osVersion;
+      final session = ApiSession(
+        id: _deviceService.deviceId,
+        user_id: authUser.id,
+        device_type: _deviceService.currentPlatformType(),
+        device_id: _deviceService.deviceId,
+        device_name: deviceName,
+        app_version: appVersion,
+        os_version: osVersion,
+        created_at: DateTime.now(),
+      );
+      await _userService.registerDeviceRow(session);
+      _userSessionNotifier.state = session.toJsonString();
+    } on AppError {
+      rethrow;
+    } catch (error, stack) {
+      throw AppError.fromError(error, stack);
+    }
+
+    // FCM registration is best-effort and must never fail sign-in: on some
+    // devices FirebaseMessaging.getToken() throws FirebaseInstallationsException
+    // (Google Play Services availability/network issues) rather than just
+    // returning null, which would otherwise surface as a false "sign-in failed"
+    // even though the account/session above was already created successfully.
+    try {
       final deviceToken = await FirebaseMessaging.instance.getToken();
       if (deviceToken == null) {
         debugPrint("AuthService: FCMToken is null");
         return;
       }
       await registerDevice(deviceToken);
-    } catch (error, stack) {
-      throw AppError.fromError(error, stack);
-    }
-  }
-
-  Future<void> _onVerificationSuccess(
-    String countryCode,
-    String phoneNumber,
-    UserCredential credential,
-  ) async {
-    try {
-      if (credential.user == null) {
-        _currentUserNotifier.state = null;
-        _userSessionNotifier.state = null;
-        return;
-      }
-      final phone = "$countryCode ${phoneNumber.caseAndSpaceInsensitive}";
-
-      final (user, session) = await _userService.upsertUser(
-        uid: credential.user!.uid,
-        phone: phone,
-      );
-
-      _currentUserNotifier.state = user.toJsonString();
-      _userSessionNotifier.state = session.toJsonString();
-    } catch (error, stack) {
-      throw AppError.fromError(error, stack);
+    } catch (error) {
+      debugPrint("AuthService: FCM registration failed (non-fatal) -> $error");
     }
   }
 
   Future<void> reAuthenticateAndDeleteAccount() async {
-    try {
-      final providerData = _auth.currentUser?.providerData.first;
-      if (PhoneAuthProvider().providerId == providerData?.providerId) {
-        await _auth.currentUser
-            ?.reauthenticateWithProvider(PhoneAuthProvider());
-        deleteAccount();
-      }
-    } catch (error, stack) {
-      throw AppError.fromError(error, stack);
-    }
+    // Supabase sessions don't have Firebase's "requires recent login"
+    // re-auth requirement, so this is equivalent to a direct delete.
+    await deleteAccount();
   }
 
   Future<void> clearSession() async {
-    if (_userSessionNotifier.state == null) return;
-    final session = ApiSession.fromJsonString(_userSessionNotifier.state!);
-    final userId = _auth.currentUser?.uid;
-
-    if (session == null || userId == null) return;
-    await _userService.clearSession(uid: userId, sessionId: session.id);
     _userSessionNotifier.state = null;
   }
 
   Future<void> registerDevice(String fcmToken) async {
-    if (_userSessionNotifier.state == null) return;
-
+    if (!isSignedIn) return;
     try {
-      final session = ApiSession.fromJsonString(_userSessionNotifier.state!);
-      if (session == null) return;
-
-      if (session.device_fcm_token == fcmToken) return;
-
-      await _userService.registerDevice(
-        session.id,
-        userId: session.user_id,
-        deviceToken: fcmToken,
-      );
+      await _userService.updateDeviceFcmToken(_deviceService.deviceId, fcmToken);
       debugPrint('AuthService: registerDevice succeed with token $fcmToken');
     } catch (error) {
       debugPrint('AuthService: registerDevice error $error');
@@ -174,8 +152,8 @@ class AuthService {
 
   Future<void> signOut() async {
     try {
+      await _supabase.auth.signOut();
       await clearSession();
-      await _auth.signOut();
       _currentUserNotifier.state = null;
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
@@ -184,9 +162,16 @@ class AuthService {
 
   Future<void> deleteAccount() async {
     try {
-      await _userService.deleteUser();
+      // Row deletion + auth.users deletion both require elevated (service-
+      // role) privileges beyond what the client's anon/authenticated key
+      // can do directly - routed through a Postgres function invoked via
+      // rpc(), which runs as security definer. See
+      // supabase/migrations/20260901120100_rls_policies.sql's sibling
+      // delete_own_account() function.
+      await _supabase.rpc('delete_own_account');
+      await _supabase.auth.signOut();
       _currentUserNotifier.state = null;
-      await _auth.currentUser?.delete();
+      _userSessionNotifier.state = null;
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }

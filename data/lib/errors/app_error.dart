@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:dio/dio.dart';
 import 'app_error_l10n_codes.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
@@ -28,6 +29,8 @@ class AppError implements Exception {
       return error;
     } else if (error is SocketException) {
       return const NoConnectionError();
+    } else if (error is DioException) {
+      return _handleDioError(error, stack);
     } else if (error is FirebaseException) {
       return _handleFirebaseError(error);
     } else if (error is TypeError) {
@@ -43,6 +46,37 @@ class AppError implements Exception {
         stackTrace: stack,
       );
     }
+  }
+
+  /// Backend error bodies are always `{"error_code": "...", "message": "..."}`,
+  /// reusing the exact same l10nCode strings as AppErrorL10nCodes wherever one
+  /// fits (see backend/app/errors.py), so no separate mapping table is needed.
+  static AppError _handleDioError(DioException error, StackTrace? stack) {
+    switch (error.type) {
+      case DioExceptionType.connectionError:
+      case DioExceptionType.connectionTimeout:
+      case DioExceptionType.receiveTimeout:
+      case DioExceptionType.sendTimeout:
+        return const NoConnectionError();
+      default:
+        break;
+    }
+
+    final data = error.response?.data;
+    if (data is Map && data['error_code'] != null) {
+      return AppError(
+        statusCode: error.response?.statusCode?.toString(),
+        message: data['message']?.toString(),
+        l10nCode: data['error_code'].toString(),
+        stackTrace: stack ?? error.stackTrace,
+      );
+    }
+
+    return SomethingWentWrongError(
+      statusCode: error.response?.statusCode?.toString(),
+      message: error.message,
+      stackTrace: stack ?? error.stackTrace,
+    );
   }
 
   static AppError _handleFirebaseError(FirebaseException error) {

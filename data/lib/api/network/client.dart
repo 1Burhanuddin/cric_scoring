@@ -6,18 +6,11 @@ import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../errors/app_error.dart';
-import '../../service/auth/auth_service.dart';
 import '../../utils/constant/firestore_constant.dart';
 
 import 'package:http/http.dart' as http;
 
 import 'endpoint.dart';
-import 'interceptor/auth_client.dart';
-
-final httpProvider = Provider((ref) {
-  final client = http.Client();
-  return AuthHttpClient(client, ref.read(firebaseAuthProvider));
-});
 
 final rawDioProvider = Provider((ref) {
   return Dio()

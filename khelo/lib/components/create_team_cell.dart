@@ -11,8 +11,7 @@ Widget createTeamCell(BuildContext context) {
     padding: const EdgeInsets.all(16),
     decoration: BoxDecoration(
         color: context.colorScheme.containerLow,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: context.colorScheme.outline)),
+        borderRadius: BorderRadius.circular(16)),
     child: Row(
       children: [
         Expanded(

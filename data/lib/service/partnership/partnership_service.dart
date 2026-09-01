@@ -1,55 +1,75 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 
+import '../../api/network/supabase_client_provider.dart';
 import '../../api/partnership/partnership_model.dart';
 import '../../errors/app_error.dart';
-import '../../utils/constant/firestore_constant.dart';
 
 final partnershipServiceProvider = Provider(
-  (ref) => PartnershipService(FirebaseFirestore.instance),
+  (ref) => PartnershipService(ref.read(supabaseClientProvider)),
 );
 
 class PartnershipService {
-  final FirebaseFirestore _firestore;
+  final SupabaseClient _supabase;
 
-  PartnershipService(this._firestore);
+  PartnershipService(this._supabase);
 
-  CollectionReference<PartnershipModel> get _partnershipCollection => _firestore
-      .collection(FireStoreConst.partnershipsCollection)
-      .withConverter(
-        fromFirestore: PartnershipModel.fromFireStore,
-        toFirestore: (PartnershipModel partnership, _) => partnership.toJson(),
-      );
-
-  String get generatePartnershipId => _partnershipCollection.doc().id;
+  String get generatePartnershipId => const Uuid().v4().replaceAll('-', '');
 
   Future<String> updatePartnership(PartnershipModel partnership) async {
     try {
-      final partnershipRef = _partnershipCollection.doc(partnership.id);
-      await partnershipRef.set(
-        partnership.copyWith(id: partnershipRef.id),
-        SetOptions(merge: true),
-      );
-      return partnershipRef.id;
+      final id = partnership.id.isNotEmpty ? partnership.id : generatePartnershipId;
+      await _supabase.from('partnerships').upsert({
+        'id': id,
+        'match_id': partnership.match_id,
+        'inning_id': partnership.inning_id,
+        'player_ids': partnership.player_ids,
+        'players': partnership.players.map((p) => p.toJson()).toList(),
+        'runs': partnership.runs,
+        'extras': partnership.extras,
+        'ball_faced': partnership.ball_faced,
+        'start_over': partnership.start_over,
+        'end_over': partnership.end_over,
+      });
+      return id;
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
   }
 
   Stream<List<PartnershipModel>> streamPartnershipByMatches(String matchId) {
-    return _partnershipCollection
-        .where(FireStoreConst.matchId, isEqualTo: matchId)
-        .snapshots()
-        .asyncMap((snapshot) async {
-      return snapshot.docs.map((mainDoc) => mainDoc.data()).toList();
-    }).handleError((error, stack) => throw AppError.fromError(error, stack));
-  }
-
-  Future<void> deletePartnership(String partnershipId) async {
     try {
-      await _partnershipCollection.doc(partnershipId).delete();
+      return _supabase
+          .from('partnerships')
+          .stream(primaryKey: ['id'])
+          .eq('match_id', matchId)
+          .map((rows) => rows.map(_partnershipFromRow).toList());
     } catch (error, stack) {
       throw AppError.fromError(error, stack);
     }
   }
+
+  Future<void> deletePartnership(String partnershipId) async {
+    try {
+      await _supabase.from('partnerships').delete().eq('id', partnershipId);
+    } catch (error, stack) {
+      throw AppError.fromError(error, stack);
+    }
+  }
+
+  PartnershipModel _partnershipFromRow(Map<String, dynamic> row) => PartnershipModel(
+        id: row['id'] as String,
+        match_id: row['match_id'] as String,
+        inning_id: row['inning_id'] as String,
+        player_ids: ((row['player_ids'] as List?) ?? const []).cast<String>(),
+        players: ((row['players'] as List?) ?? const [])
+            .map((p) => PartnershipPlayer.fromJson(p as Map<String, dynamic>))
+            .toList(),
+        runs: row['runs'] as int,
+        extras: row['extras'] as int,
+        ball_faced: row['ball_faced'] as int,
+        start_over: (row['start_over'] as num).toDouble(),
+        end_over: (row['end_over'] as num).toDouble(),
+      );
 }

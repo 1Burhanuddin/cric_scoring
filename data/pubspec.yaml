@@ -14,19 +14,23 @@ dependencies:
   shared_preferences: ^2.3.2
   collection: any
 
-  # storage
-  firebase_storage: ^12.3.2
+  # Supabase (auth, Postgres via PostgREST, storage, realtime) - the backend
+  # for everything except the domains not yet migrated off Firestore.
+  supabase_flutter: ^2.8.0
+
+  # storage (tournaments/leaderboard/contact_support still use Firestore -
+  # see cric_scoring issues #3/#4; everything else now goes through Supabase)
   cloud_firestore: ^5.4.3
   firebase_messaging: ^15.0.2
 
-  # auth
+  # auth (still needed for FirebaseException handling on the non-migrated
+  # Firestore domains; phone sign-in itself no longer uses FirebaseAuth)
   firebase_core: ^3.6.0
   firebase_auth: ^5.3.1
 
   # io
   http: ^1.2.2
   dio: ^5.7.0
-  cloud_functions: ^5.1.3
   json_annotation: ^4.9.0
   json_serializable: ^6.8.0
   freezed_annotation: ^2.4.4
@@ -49,7 +53,6 @@ dev_dependencies:
   flutter_lints: ^5.0.0
 
   build_runner: ^2.4.13
-  build_verify: ^3.1.0
   freezed: ^2.5.7
 
 # For information on the generic Dart part of this file, see the

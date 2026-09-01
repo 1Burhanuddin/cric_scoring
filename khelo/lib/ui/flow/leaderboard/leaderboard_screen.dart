@@ -182,8 +182,8 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
       child: Container(
         padding: EdgeInsets.all(16),
         decoration: BoxDecoration(
+          color: context.colorScheme.containerLow,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: context.colorScheme.outline),
         ),
         child: Row(
           children: [

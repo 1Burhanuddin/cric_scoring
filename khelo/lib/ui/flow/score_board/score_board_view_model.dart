@@ -12,6 +12,7 @@ import 'package:cricheros_data/errors/app_error.dart';
 import 'package:cricheros_data/extensions/list_extensions.dart';
 import 'package:cricheros_data/service/ball_score/ball_score_service.dart';
 import 'package:cricheros_data/service/innings/inning_service.dart';
+import 'package:cricheros_data/service/leaderboard/leaderboard_service.dart';
 import 'package:cricheros_data/service/match/match_service.dart';
 import 'package:cricheros_data/service/team/team_service.dart';
 import 'package:cricheros_data/service/tournament/tournament_service.dart';
@@ -38,6 +39,7 @@ final scoreBoardStateProvider = StateNotifierProvider.autoDispose<
     ref.read(tournamentServiceProvider),
     ref.read(matchEventServiceProvider),
     ref.read(partnershipServiceProvider),
+    ref.read(leaderboardServiceProvider),
   );
 });
 
@@ -50,6 +52,7 @@ class ScoreBoardViewNotifier extends StateNotifier<ScoreBoardViewState> {
   final BallScoreService _ballScoreService;
   final MatchEventService _matchEventService;
   final PartnershipService _partnershipService;
+  final LeaderboardService _leaderboardService;
 
   StreamSubscription<MatchModel?>? _matchStreamSubscription;
   StreamSubscription<List<BallScoreChange>>? _ballScoreStreamSubscription;
@@ -70,6 +73,7 @@ class ScoreBoardViewNotifier extends StateNotifier<ScoreBoardViewState> {
     this._tournamentService,
     this._matchEventService,
     this._partnershipService,
+    this._leaderboardService,
   ) : super(const ScoreBoardViewState());
 
   void setData(String matchId) {
@@ -1018,6 +1022,8 @@ class ScoreBoardViewNotifier extends StateNotifier<ScoreBoardViewState> {
               type: userStatType,
             );
         await _userService.updateUserStats(player, newState);
+        if (!mounted) return;
+        await _leaderboardService.updateLeaderboardForUser(player, oldStats, newState);
         if (!mounted) return;
       }
     } catch (e) {
