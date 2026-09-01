@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../api/ball_score/ball_score_model.dart';
 import '../../api/match/match_model.dart';
+import '../../api/network/realtime_watch.dart';
 import '../../api/network/supabase_client_provider.dart';
 import '../../api/team/team_model.dart';
 import '../../api/tournament/tournament_model.dart';
@@ -115,7 +116,7 @@ class TournamentService {
   }
 
   Stream<List<TournamentTeamStat>> streamTeamStats(String tournamentId) {
-    return _poll(() async {
+    return watchTables(_supabase, ['tournament_team_stats'], () async {
       final rows = await _supabase.from('tournament_team_stats').select().eq('tournament_id', tournamentId);
       return Future.wait(rows.map((row) async {
         final team = await _teamService.getTeamById(row['team_id'] as String);
@@ -144,7 +145,7 @@ class TournamentService {
   }
 
   Stream<List<PlayerKeyStat>> streamPlayerKeyStats(String tournamentId) {
-    return _poll(() async {
+    return watchTables(_supabase, ['tournament_player_key_stats'], () async {
       final rows = await _supabase.from('tournament_player_key_stats').select().eq('tournament_id', tournamentId);
       return Future.wait(rows.map((row) async {
         final player = await _userService.getUser(row['player_id'] as String);
@@ -197,7 +198,7 @@ class TournamentService {
   /// (same as the original Firestore getTournaments/searchTournament, which
   /// only hydrate `.teams` in the single-tournament detail view).
   Stream<List<TournamentModel>> streamActiveTournaments({int limit = 10}) {
-    return _poll(() async {
+    return watchTables(_supabase, ['tournaments', 'tournament_teams'], () async {
       final now = DateTime.now().toUtc();
       final rows = await _supabase
           .from('tournaments')
@@ -211,7 +212,7 @@ class TournamentService {
   }
 
   Stream<List<TournamentModel>> streamCurrentUserRelatedMatches(String userId) {
-    return _poll(() async {
+    return watchTables(_supabase, ['tournaments', 'tournament_members'], () async {
       final ownedRows = await _supabase.from('tournaments').select(_tournamentSelect).eq('created_by', userId);
       final memberRows = await _supabase
           .from('tournament_members')
@@ -232,7 +233,7 @@ class TournamentService {
   }
 
   Stream<TournamentModel> streamTournamentById(String tournamentId) {
-    return _poll1(() async {
+    return watchTables(_supabase, ['tournaments', 'tournament_teams', 'tournament_members'], () async {
       final row = await _supabase.from('tournaments').select(_tournamentSelect).eq('id', tournamentId).maybeSingle();
       if (row == null) {
         return TournamentModel(
@@ -460,24 +461,6 @@ class TournamentService {
   }
 
   // ---- helpers --------------------------------------------------------
-
-  /// No realtime channel for the hydrated (team/member-joined) tournament
-  /// queries yet, same gap as MatchService - emits once immediately.
-  Stream<List<T>> _poll<T>(Future<List<T>> Function() fetch) async* {
-    try {
-      yield await fetch();
-    } catch (error, stack) {
-      throw AppError.fromError(error, stack);
-    }
-  }
-
-  Stream<TournamentModel> _poll1(Future<TournamentModel> Function() fetch) async* {
-    try {
-      yield await fetch();
-    } catch (error, stack) {
-      throw AppError.fromError(error, stack);
-    }
-  }
 
   Future<TournamentModel> _withComputedStatus(TournamentModel tournament) async {
     final matches = await _matchService.getMatchesByTournamentId(tournament.id);

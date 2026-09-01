@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../api/match/match_model.dart';
+import '../../api/network/realtime_watch.dart';
 import '../../api/network/supabase_client_provider.dart';
 import '../../api/user/user_models.dart';
 import '../../errors/app_error.dart';
@@ -98,7 +99,7 @@ class MatchService {
     required String userId,
     int limit = 10,
   }) {
-    return _pollMatches(() async {
+    return _watchMatches(() async {
       final createdRows = await _supabase.from('matches').select(_matchSelect).eq('created_by', userId);
       final playedRows = await _supabase
           .from('match_players')
@@ -119,7 +120,7 @@ class MatchService {
   }
 
   Stream<List<MatchModel>> streamUserMatches(String userId) {
-    return _pollMatches(() async {
+    return _watchMatches(() async {
       final rows = await _supabase
           .from('match_players')
           .select('match_teams!inner(matches!inner($_matchSelect))')
@@ -136,7 +137,7 @@ class MatchService {
     required String teamId,
     int limit = 10,
   }) {
-    return _pollMatches(() async {
+    return _watchMatches(() async {
       final rows = await _supabase
           .from('match_teams')
           .select('matches!inner($_matchSelect)')
@@ -149,7 +150,7 @@ class MatchService {
   }
 
   Stream<List<MatchModel>> streamActiveRunningMatches({int limit = 10}) {
-    return _pollMatches(() async {
+    return _watchMatches(() async {
       final cutoff = DateTime.now().subtract(const Duration(hours: 1, minutes: 30)).toUtc();
       final rows = await _supabase
           .from('matches')
@@ -163,7 +164,7 @@ class MatchService {
   }
 
   Stream<List<MatchModel>> streamUpcomingMatches({int limit = 10}) {
-    return _pollMatches(() async {
+    return _watchMatches(() async {
       final now = DateTime.now();
       final startOfDay = DateTime(now.year, now.month, now.day).toUtc();
       final aMonthAfter = DateTime(now.year, now.month + 1, now.day).toUtc();
@@ -180,7 +181,7 @@ class MatchService {
   }
 
   Stream<List<MatchModel>> streamFinishedMatches() {
-    return _pollMatches(() async {
+    return _watchMatches(() async {
       final now = DateTime.now();
       final cutoff = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 15)).toUtc();
       final rows = await _supabase
@@ -213,16 +214,16 @@ class MatchService {
     }
   }
 
+  /// Watches matches/match_teams/match_players, not just matches: scoring a
+  /// ball (add_ball_score_and_update) updates match_teams' run/wicket/over
+  /// totals and never touches the matches row itself, so a plain
+  /// `.stream()` on matches alone would never notice a live score change.
   Stream<MatchModel> streamMatchById(String id) {
-    try {
-      return _supabase.from('matches').stream(primaryKey: ['id']).eq('id', id).asyncMap((rows) async {
-        if (rows.isEmpty) return _emptyMatch();
-        final full = await _supabase.from('matches').select(_matchSelect).eq('id', id).single();
-        return _hydrate(_matchFromRow(full));
-      });
-    } catch (error, stack) {
-      throw AppError.fromError(error, stack);
-    }
+    return watchTables(_supabase, ['matches', 'match_teams', 'match_players'], () async {
+      final row = await _supabase.from('matches').select(_matchSelect).eq('id', id).maybeSingle();
+      if (row == null) return _emptyMatch();
+      return _hydrate(_matchFromRow(row));
+    });
   }
 
   Future<String> updateMatch(MatchModel match) async {
@@ -436,7 +437,7 @@ class MatchService {
 
   Stream<List<MatchModel>> streamMatchesByIds(List<String> matchIds) {
     if (matchIds.isEmpty) return Stream.value([]);
-    return _pollMatches(() async {
+    return _watchMatches(() async {
       final rows = await _supabase.from('matches').select(_matchSelect).inFilter('id', matchIds);
       final matches = rows.map(_matchFromRow).toList();
       return Future.wait(matches.map(_hydrateTeamsOnly));
@@ -445,17 +446,11 @@ class MatchService {
 
   // ---- helpers --------------------------------------------------------
 
-  /// No realtime channel for the hydrated (team/user-joined) match list
-  /// queries yet - Supabase Realtime can watch a raw table but the app needs
-  /// the joined+hydrated shape, so this emits once immediately. Single-row
-  /// reads (streamMatchById/streamMatchSetting) do use a real Supabase
-  /// Realtime channel via .stream().
-  Stream<List<MatchModel>> _pollMatches(Future<List<MatchModel>> Function() fetch) async* {
-    try {
-      yield await fetch();
-    } catch (error, stack) {
-      throw AppError.fromError(error, stack);
-    }
+  /// Matches lists watch matches + match_teams (score totals live there,
+  /// see streamMatchById) so cards showing live scores update in real time
+  /// too, not just the single match detail screen.
+  Stream<List<MatchModel>> _watchMatches(Future<List<MatchModel>> Function() fetch) {
+    return watchTables(_supabase, ['matches', 'match_teams'], fetch);
   }
 
   MatchModel _emptyMatch() => MatchModel(

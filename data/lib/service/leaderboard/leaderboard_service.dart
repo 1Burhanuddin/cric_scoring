@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../api/leaderboard/leaderboard_model.dart';
+import '../../api/network/realtime_watch.dart';
 import '../../api/network/supabase_client_provider.dart';
 import '../../api/user/user_models.dart';
 import '../../errors/app_error.dart';
@@ -76,25 +77,23 @@ class LeaderboardService {
     }
   }
 
-  /// No realtime channel for the user-hydrated leaderboard query yet, same
-  /// gap as MatchService/TournamentService - emits once immediately.
   Stream<List<LeaderboardPlayer>> streamLeaderboardByField({
     LeaderboardType type = LeaderboardType.allTime,
     int limit = 20,
     LeaderboardField field = LeaderboardField.batting,
-  }) async* {
-    try {
-      yield await getLeaderboardByField(type: type, limit: limit, field: field);
-    } catch (error, stack) {
-      throw AppError.fromError(error, stack);
-    }
+  }) {
+    return watchTables(
+      _supabase,
+      ['leaderboard_entries'],
+      () => getLeaderboardByField(type: type, limit: limit, field: field),
+    );
   }
 
   Stream<List<LeaderboardModel>> streamLeaderboard({
     LeaderboardType type = LeaderboardType.allTime,
     int limit = 20,
-  }) async* {
-    try {
+  }) {
+    return watchTables(_supabase, ['leaderboard_entries'], () async {
       final results = await Future.wait(
         LeaderboardField.values.map(
           (field) async => LeaderboardModel(
@@ -103,10 +102,8 @@ class LeaderboardService {
           ),
         ),
       );
-      yield results.where((r) => r.players.isNotEmpty).toList();
-    } catch (error, stack) {
-      throw AppError.fromError(error, stack);
-    }
+      return results.where((r) => r.players.isNotEmpty).toList();
+    });
   }
 
   /// Ports khelo/functions/src/leaderboard (the old userStatWriteObserver

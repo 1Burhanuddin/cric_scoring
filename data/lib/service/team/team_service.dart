@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 
+import '../../api/network/realtime_watch.dart';
 import '../../api/network/supabase_client_provider.dart';
 import '../../api/team/team_model.dart';
 import '../../api/user/user_models.dart';
@@ -51,19 +52,16 @@ class TeamService {
     }
   }
 
+  /// Watches teams/team_players/team_stats, not just teams: squad changes
+  /// (add/edit/remove player) and stat updates never touch the teams row
+  /// itself, so a plain `.stream()` on teams alone would miss them - same
+  /// gap MatchService.streamMatchById had for match_teams/match_players.
   Stream<TeamModel> streamTeamById(String teamId) {
-    try {
-      return _supabase
-          .from('teams')
-          .stream(primaryKey: ['id'])
-          .eq('id', teamId)
-          .asyncMap((rows) async {
-            if (rows.isEmpty) return deActiveDummyTeamModel(teamId);
-            return fetchDetailsOfTeam(await _hydrateTeamPlayers(_teamFromRow(rows.first)));
-          });
-    } catch (error, stack) {
-      throw AppError.fromError(error, stack);
-    }
+    return watchTables(_supabase, ['teams', 'team_players', 'team_stats'], () async {
+      final row = await _supabase.from('teams').select('*, team_players(user_id, role)').eq('id', teamId).maybeSingle();
+      if (row == null) return deActiveDummyTeamModel(teamId);
+      return fetchDetailsOfTeam(_teamFromRow(row));
+    });
   }
 
   Future<TeamStat> getTeamStatById(String teamId) async {
@@ -78,36 +76,30 @@ class TeamService {
   Stream<List<TeamModel>> streamUserRelatedTeams({
     required String userId,
     int limit = 10,
-  }) async* {
-    try {
+  }) {
+    return watchTables(_supabase, ['team_players', 'teams', 'team_stats'], () async {
       final teams = await _rawTeamsByMember(userId);
-      yield await Future.wait(teams.take(limit).map(fetchDetailsOfTeam));
-    } catch (error, stack) {
-      throw AppError.fromError(error, stack);
-    }
+      return Future.wait(teams.take(limit).map(fetchDetailsOfTeam));
+    });
   }
 
-  Stream<List<TeamModel>> streamUserOwnedTeams(String userId) async* {
-    try {
+  Stream<List<TeamModel>> streamUserOwnedTeams(String userId) {
+    return watchTables(_supabase, ['team_players', 'teams', 'team_stats'], () async {
       final teams = await _rawTeamsByMember(userId);
       final owned = teams.where(
         (t) =>
             t.created_by == userId ||
             t.players.any((p) => p.id == userId && p.role == TeamPlayerRole.admin),
       );
-      yield await Future.wait(owned.map(fetchDetailsOfTeam));
-    } catch (error, stack) {
-      throw AppError.fromError(error, stack);
-    }
+      return Future.wait(owned.map(fetchDetailsOfTeam));
+    });
   }
 
-  Stream<List<TeamModel>> streamUserRelatedTeamsByUserId(String userId) async* {
-    try {
+  Stream<List<TeamModel>> streamUserRelatedTeamsByUserId(String userId) {
+    return watchTables(_supabase, ['team_players', 'teams', 'team_stats'], () async {
       final teams = await _rawTeamsByMember(userId);
-      yield await Future.wait(teams.map(fetchDetailsOfTeam));
-    } catch (error, stack) {
-      throw AppError.fromError(error, stack);
-    }
+      return Future.wait(teams.map(fetchDetailsOfTeam));
+    });
   }
 
   /// Create-or-replace: mirrors the app's Firestore-era `.set(merge:true)`
@@ -311,19 +303,6 @@ class TeamService {
         .select('team_id, teams!inner(*, team_players(user_id, role))')
         .eq('user_id', userId);
     return rows.map((row) => _teamFromRow(row['teams'] as Map<String, dynamic>)).toList();
-  }
-
-  Future<TeamModel> _hydrateTeamPlayers(TeamModel team) async {
-    if (team.players.isNotEmpty) return team;
-    final rows = await _supabase.from('team_players').select('user_id, role').eq('team_id', team.id);
-    return team.copyWith(
-      players: rows
-          .map((p) => TeamPlayer(
-                id: p['user_id'] as String,
-                role: (p['role'] as String) == 'admin' ? TeamPlayerRole.admin : TeamPlayerRole.player,
-              ))
-          .toList(),
-    );
   }
 
   Future<TeamModel> fetchDetailsOfTeam(TeamModel team) async {
